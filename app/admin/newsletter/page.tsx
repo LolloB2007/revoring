@@ -1,0 +1,48 @@
+import { desc, isNotNull } from "drizzle-orm";
+import { db, schema } from "@/lib/db";
+import { NewsletterComposer } from "@/components/admin/NewsletterComposer";
+
+export default async function AdminNewsletterPage() {
+  const confirmed = await db
+    .select({
+      email: schema.newsletterSubscribers.email,
+      locale: schema.newsletterSubscribers.locale,
+      confirmedAt: schema.newsletterSubscribers.confirmedAt,
+    })
+    .from(schema.newsletterSubscribers)
+    .where(isNotNull(schema.newsletterSubscribers.confirmedAt))
+    .orderBy(desc(schema.newsletterSubscribers.createdAt))
+    .limit(500);
+  return (
+    <div className="max-w-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight">Newsletter</h1>
+      <p className="mt-2 text-sm text-neutral-600">{confirmed.length} confirmed subscribers.</p>
+      <div className="mt-8">
+        <NewsletterComposer subscriberCount={confirmed.length} />
+      </div>
+      <div className="mt-12">
+        <h2 className="text-xl font-semibold">Subscribers</h2>
+        <div className="mt-4 rounded-lg border border-neutral-200 bg-white overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wider text-neutral-500">
+              <tr>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Locale</th>
+                <th className="px-4 py-3">Confirmed</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200">
+              {confirmed.map((s) => (
+                <tr key={s.email}>
+                  <td className="px-4 py-3">{s.email}</td>
+                  <td className="px-4 py-3">{s.locale}</td>
+                  <td className="px-4 py-3 text-neutral-500">{s.confirmedAt?.toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

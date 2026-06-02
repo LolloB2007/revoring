@@ -1,0 +1,16 @@
+title = "Revoring gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for safe placeholders in repo"
+paths = [
+  '''node_modules/.*''',
+  '''\.next/.*''',
+  '''public/.*''',
+]
+regexes = [
+  '''sk_test_placeholder''',
+  '''pk_test_placeholder''',
+]

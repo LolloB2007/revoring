@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n";
 import { LanguageToggle } from "./LanguageToggle";
@@ -16,8 +17,15 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200/70 bg-white/80 backdrop-blur">
       <div className="container-x flex h-16 items-center justify-between">
-        <Link href={base} className="font-semibold tracking-tight text-lg">
-          REVORING
+        <Link href={base} className="flex items-center" aria-label="Revoring home">
+          <Image
+            src="/brand/revoring-logo.png"
+            alt="Revoring"
+            width={150}
+            height={32}
+            priority
+            className="h-8 w-auto"
+          />
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm">
           {links.map((l) => (

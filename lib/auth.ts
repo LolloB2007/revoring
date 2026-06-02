@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "./db";
 import { env } from "./env";
-import { totp } from "otplib";
+import { authenticator } from "otplib";
 
 declare module "next-auth" {
   interface Session {
@@ -27,12 +27,14 @@ const LOCKOUT_MINUTES = 15;
 const MAX_FAILED = 5;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // @ts-expect-error — Drizzle adapter typing is permissive vs neon-http
+  // Casts: the adapter's expected types are tightly coupled to its sample
+  // schema; ours is functionally compatible but uses a uuid PK + custom column
+  // names, hence the localized any.
   adapter: DrizzleAdapter(db, {
-    usersTable: schema.users,
-    accountsTable: schema.accounts,
-    sessionsTable: schema.sessions,
-    verificationTokensTable: schema.verificationTokens,
+    usersTable: schema.users as never,
+    accountsTable: schema.accounts as never,
+    sessionsTable: schema.sessions as never,
+    verificationTokensTable: schema.verificationTokens as never,
   }),
   session: { strategy: "database" },
   pages: {
@@ -90,7 +92,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // 2FA enforcement for admin (and any user who enabled it).
         if (user.totpEnabled) {
           if (!totpCode || !user.totpSecret) return null;
-          const valid = totp.check(totpCode, user.totpSecret);
+          const valid = authenticator.check(totpCode, user.totpSecret);
           if (!valid) {
             await bumpFailed(user.id);
             return null;

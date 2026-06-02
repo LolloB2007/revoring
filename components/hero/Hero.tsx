@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { motion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
@@ -23,13 +24,17 @@ export function Hero() {
         ref={ref}
         className="relative h-[100svh] overflow-hidden bg-neutral-950 text-white"
       >
-        <motion.div
-          style={{ scale }}
-          className="absolute inset-0 bg-cover bg-center"
-          // TODO(phase-10): replace with generated higgsfield hero image at /brand/hero.webp
-        >
+        <motion.div style={{ scale }} className="absolute inset-0">
+          <Image
+            src="/brand/hero.jpg"
+            alt="Functional elastic-ring training"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
           <div
-            className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,90,60,0.35),transparent_60%),radial-gradient(circle_at_70%_70%,rgba(40,80,180,0.35),transparent_55%),linear-gradient(180deg,#0a0a0c,#000)]"
+            className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/10"
             aria-hidden
           />
         </motion.div>

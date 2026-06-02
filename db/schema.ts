@@ -23,8 +23,9 @@ export const users = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     email: text("email").notNull(),
-    emailVerified: timestamp("email_verified", { withTimezone: true }),
+    emailVerified: timestamp("emailVerified", { withTimezone: true }),
     name: text("name"),
+    image: text("image"),
     hashedPassword: text("hashed_password"),
     role: roleEnum("role").notNull().default("user"),
     totpSecret: text("totp_secret"),
@@ -39,22 +40,24 @@ export const users = pgTable(
   }),
 );
 
+// NOTE: column names use snake_case TS keys to match @auth/drizzle-adapter's
+// expected shape. Do not rename without checking adapter compatibility.
 export const accounts = pgTable(
   "accounts",
   {
-    userId: uuid("user_id")
+    userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
     provider: text("provider").notNull(),
-    providerAccountId: text("provider_account_id").notNull(),
-    refreshToken: text("refresh_token"),
-    accessToken: text("access_token"),
-    expiresAt: integer("expires_at"),
-    tokenType: text("token_type"),
+    providerAccountId: text("providerAccountId").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
     scope: text("scope"),
-    idToken: text("id_token"),
-    sessionState: text("session_state"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.provider, t.providerAccountId] }),
@@ -62,8 +65,8 @@ export const accounts = pgTable(
 );
 
 export const sessions = pgTable("sessions", {
-  sessionToken: text("session_token").primaryKey(),
-  userId: uuid("user_id")
+  sessionToken: text("sessionToken").primaryKey(),
+  userId: uuid("userId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   expires: timestamp("expires", { withTimezone: true }).notNull(),

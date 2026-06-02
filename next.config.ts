@@ -22,6 +22,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  turbopack: {
+    root: import.meta.dirname,
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "4mb",
