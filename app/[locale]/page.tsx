@@ -1,7 +1,9 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Hero } from "@/components/hero/Hero";
+import { Marquee } from "@/components/site/Marquee";
 import { ValueProps } from "@/components/site/ValueProps";
 import { FeaturedProducts } from "@/components/site/FeaturedProducts";
+import { InAction } from "@/components/site/InAction";
 import { SocialProof } from "@/components/site/SocialProof";
 import { AcademyBanner } from "@/components/site/AcademyBanner";
 import { Testimonial } from "@/components/site/Testimonial";
@@ -26,9 +28,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <>
       <Hero />
+      <Marquee />
       <ValueProps />
       <SocialProof />
       <FeaturedProducts />
+      <InAction />
       <Testimonial />
       <AcademyBanner />
       <CtaBanner />

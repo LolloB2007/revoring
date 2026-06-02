@@ -1,5 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 
+export const revalidate = 60;
+
 export default async function PrivacyPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -8,8 +10,8 @@ export default async function PrivacyPage({ params }: { params: Promise<{ locale
       <h1>{locale === "it" ? "Informativa sulla privacy" : "Privacy policy"}</h1>
       <p className="text-sm text-neutral-500">
         {locale === "it"
-          ? "Contenuto da incollare dal cliente tramite /admin/pages (Phase 9)."
-          : "Content pasted by client via /admin/pages (Phase 9)."}
+          ? "Contenuto da incollare direttamente in questo file."
+          : "Content to be pasted directly into this file."}
       </p>
     </section>
   );

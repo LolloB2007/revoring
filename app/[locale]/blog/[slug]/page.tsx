@@ -4,6 +4,7 @@ import { setRequestLocale } from "next-intl/server";
 import { store } from "@/lib/store";
 import { TABLES, type BlogPost } from "@/lib/models";
 import { buildMetadata } from "@/lib/seo";
+import { AdminEditLink } from "@/components/admin/AdminEditLink";
 import { env } from "@/lib/env";
 import type { Locale } from "@/i18n";
 
@@ -57,6 +58,7 @@ export default async function BlogPostPage({ params }: { params: Promise<RoutePa
 
   return (
     <article className="container-x py-16 max-w-3xl">
+      <AdminEditLink href={`/admin/blog/${post.id}`} variant="floating" label={locale === "it" ? "Modifica articolo" : "Edit post"} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       {post.coverUrl && (
         <div className="aspect-[16/9] bg-neutral-100 rounded-lg overflow-hidden relative mb-10">

@@ -2,12 +2,13 @@
 
 import { motion } from "motion/react";
 import { useLocale } from "next-intl";
+import { CountUp } from "./CountUp";
 
 const STATS = [
-  { value: "300+", labelIt: "Esercizi", labelEn: "Exercises" },
-  { value: "12k", labelIt: "Atleti", labelEn: "Athletes" },
-  { value: "180+", labelIt: "Istruttori certificati", labelEn: "Certified instructors" },
-  { value: "30+", labelIt: "Paesi", labelEn: "Countries" },
+  { value: 300, suffix: "+", labelIt: "Esercizi", labelEn: "Exercises" },
+  { value: 14, suffix: "", labelIt: "Anelli elastici", labelEn: "Elastic rings" },
+  { value: 180, suffix: "+", labelIt: "Istruttori certificati", labelEn: "Certified instructors" },
+  { value: 30, suffix: "+", labelIt: "Paesi", labelEn: "Countries" },
 ];
 
 export function SocialProof() {
@@ -17,14 +18,16 @@ export function SocialProof() {
       <div className="container-x grid grid-cols-2 md:grid-cols-4 gap-8">
         {STATS.map((s, i) => (
           <motion.div
-            key={s.value}
-            initial={{ opacity: 0, y: 16 }}
+            key={s.labelEn}
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.4, delay: i * 0.08 }}
+            transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
             className="text-center md:text-left"
           >
-            <p className="text-5xl md:text-6xl font-semibold tracking-tight">{s.value}</p>
+            <p className="text-5xl md:text-6xl font-semibold tracking-tight">
+              <CountUp value={s.value} suffix={s.suffix} />
+            </p>
             <p className="mt-2 text-sm text-neutral-500 uppercase tracking-wider">
               {isIt ? s.labelIt : s.labelEn}
             </p>

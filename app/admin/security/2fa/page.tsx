@@ -10,15 +10,14 @@ import { Input } from "@/components/ui/input";
 export default async function TwoFactorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ secret?: string; otpauth?: string }>;
+  searchParams: Promise<{ secret?: string; error?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/it/account/signin");
 
   const sp = await searchParams;
   const secret = sp.secret ?? authenticator.generateSecret();
-  const otpauth =
-    sp.otpauth ?? authenticator.keyuri(session.user.email ?? "admin", "Revoring Admin", secret);
+  const otpauth = authenticator.keyuri(session.user.email ?? "admin", "Revoring Admin", secret);
   const qrSvg = await QRCode.toString(otpauth, { type: "svg", margin: 1, width: 240 });
 
   async function enable(formData: FormData) {
@@ -48,9 +47,9 @@ export default async function TwoFactorPage({
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-3xl font-semibold tracking-tight">Two-factor authentication</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Autenticazione a due fattori</h1>
       <p className="mt-2 text-neutral-600">
-        Scan the QR code with Google Authenticator, 1Password, or Authy — then enter the 6-digit code to enable 2FA.
+        Scansiona il QR code con Google Authenticator, 1Password o Authy, poi inserisci il codice a 6 cifre per attivare la 2FA.
       </p>
       <div
         className="mt-6 rounded-lg border border-neutral-200 bg-white p-4 inline-block"
@@ -61,7 +60,8 @@ export default async function TwoFactorPage({
       <form action={enable} className="mt-6 space-y-3">
         <input type="hidden" name="secret" value={secret} />
         <Input name="code" placeholder="123456" inputMode="numeric" maxLength={6} required />
-        <Button type="submit">Enable 2FA</Button>
+        <Button type="submit">Attiva 2FA</Button>
+        {sp.error && <p className="text-sm text-red-600">Codice non valido. Riprova.</p>}
       </form>
     </div>
   );

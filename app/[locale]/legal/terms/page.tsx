@@ -1,5 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 
+export const revalidate = 60;
+
 export default async function TermsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -8,8 +10,8 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
       <h1>{locale === "it" ? "Termini di vendita" : "Terms of sale"}</h1>
       <p className="text-sm text-neutral-500">
         {locale === "it"
-          ? "Modificabili dal cliente via /admin/pages."
-          : "Editable by the client via /admin/pages."}
+          ? "Da compilare direttamente in questo file."
+          : "To be filled in directly in this file."}
       </p>
     </section>
   );

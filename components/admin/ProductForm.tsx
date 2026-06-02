@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { upsertProductAction, deleteProductAction } from "@/app/actions/admin-products";
@@ -46,10 +47,10 @@ export function ProductForm({ initial }: { initial?: Initial }) {
         prefix: "products",
       }),
     });
-    if (!presign.ok) return alert("Upload failed");
+    if (!presign.ok) return alert("Upload fallito");
     const { url, publicUrl } = await presign.json();
     const put = await fetch(url, { method: "PUT", headers: { "content-type": file.type }, body: file });
-    if (!put.ok) return alert("Upload failed");
+    if (!put.ok) return alert("Upload fallito");
     setImages((cur) => [...cur, { url: publicUrl, alt: file.name }]);
   }
 
@@ -57,21 +58,21 @@ export function ProductForm({ initial }: { initial?: Initial }) {
     <form action={upsertProductAction} className="space-y-6">
       {v.id && <input type="hidden" name="id" value={v.id} />}
 
-      <Row label="Slug">
-        <Input name="slug" defaultValue={v.slug} required pattern="[a-z0-9-]+" />
+      <Row label="Slug (URL)">
+        <Input name="slug" defaultValue={v.slug} required pattern="[a-z0-9-]+" placeholder="es. revoring-medium" />
       </Row>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Row label="Name (IT)">
+        <Row label="Nome (italiano)">
           <Input name="name_it" defaultValue={v.nameI18n.it} required />
         </Row>
-        <Row label="Name (EN)">
+        <Row label="Nome (inglese)">
           <Input name="name_en" defaultValue={v.nameI18n.en} required />
         </Row>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Row label="Description (IT)">
+        <Row label="Descrizione (italiano)">
           <textarea
             name="description_it"
             defaultValue={v.descriptionI18n.it}
@@ -79,7 +80,7 @@ export function ProductForm({ initial }: { initial?: Initial }) {
             className="w-full min-h-32 rounded-md border border-neutral-300 px-3 py-2 text-sm"
           />
         </Row>
-        <Row label="Description (EN)">
+        <Row label="Descrizione (inglese)">
           <textarea
             name="description_en"
             defaultValue={v.descriptionI18n.en}
@@ -90,10 +91,10 @@ export function ProductForm({ initial }: { initial?: Initial }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Row label="Price (cents)">
+        <Row label="Prezzo (centesimi)">
           <Input name="priceCents" type="number" min="0" defaultValue={v.priceCents} required />
         </Row>
-        <Row label="Currency">
+        <Row label="Valuta">
           <select
             name="currency"
             defaultValue={v.currency}
@@ -104,28 +105,28 @@ export function ProductForm({ initial }: { initial?: Initial }) {
             <option value="GBP">GBP</option>
           </select>
         </Row>
-        <Row label="Stock">
+        <Row label="Scorte">
           <Input name="stock" type="number" min="0" defaultValue={v.stock} required />
         </Row>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Row label="Default variant SKU">
+        <Row label="SKU variante predefinita">
           <Input name="defaultVariantSku" defaultValue={v.defaultVariantSku} required />
         </Row>
-        <Row label="Weight (grams)">
+        <Row label="Peso (grammi)">
           <Input name="weightGrams" type="number" min="0" defaultValue={v.weightGrams ?? ""} />
         </Row>
       </div>
 
-      <Row label="Active">
+      <Row label="Visibilità">
         <label className="inline-flex items-center gap-2">
           <input type="checkbox" name="isActive" defaultChecked={v.isActive} />
-          <span className="text-sm">Visible in catalogue</span>
+          <span className="text-sm">Mostra nel catalogo pubblico</span>
         </label>
       </Row>
 
-      <Row label="Images">
+      <Row label="Immagini">
         <div className="space-y-3">
           <input
             type="file"
@@ -139,11 +140,12 @@ export function ProductForm({ initial }: { initial?: Initial }) {
           <div className="grid grid-cols-3 gap-2">
             {images.map((img, i) => (
               <div key={img.url} className="relative">
-                <img src={img.url} alt={img.alt} className="aspect-square object-cover rounded" />
+                <Image src={img.url} alt={img.alt} width={200} height={200} className="aspect-square object-cover rounded w-full h-auto" />
                 <button
                   type="button"
                   onClick={() => setImages((cur) => cur.filter((_, idx) => idx !== i))}
                   className="absolute top-1 right-1 text-xs bg-white/90 rounded px-2 py-0.5"
+                  aria-label="Rimuovi"
                 >
                   ×
                 </button>
@@ -151,14 +153,18 @@ export function ProductForm({ initial }: { initial?: Initial }) {
             ))}
           </div>
           <input type="hidden" name="images" value={JSON.stringify(images)} />
+          {images.length === 0 && (
+            <p className="text-xs text-neutral-500">
+              Configura R2 in <code>.env.local</code> per abilitare l&apos;upload. Senza R2 puoi
+              comunque incollare URL nelle immagini esistenti modificandole direttamente.
+            </p>
+          )}
         </div>
       </Row>
 
       <div className="flex gap-3 pt-4">
-        <Button type="submit">{v.id ? "Save changes" : "Create product"}</Button>
-        {v.id && (
-          <DeleteButton id={v.id} />
-        )}
+        <Button type="submit">{v.id ? "Salva modifiche" : "Crea prodotto"}</Button>
+        {v.id && <DeleteButton id={v.id} />}
       </div>
     </form>
   );
@@ -172,10 +178,10 @@ function DeleteButton({ id }: { id: string }) {
         type="submit"
         variant="ghost"
         onClick={(e) => {
-          if (!confirm("Delete this product? This cannot be undone.")) e.preventDefault();
+          if (!confirm("Eliminare definitivamente questo prodotto?")) e.preventDefault();
         }}
       >
-        Delete
+        Elimina
       </Button>
     </form>
   );

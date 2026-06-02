@@ -1,7 +1,5 @@
 import Image from "next/image";
 import { setRequestLocale } from "next-intl/server";
-import { store } from "@/lib/store";
-import { TABLES, type Page } from "@/lib/models";
 import { buildMetadata } from "@/lib/seo";
 import type { Locale } from "@/i18n";
 
@@ -65,14 +63,6 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   setRequestLocale(locale);
   const isIt = locale === "it";
 
-  let adminBody: string | null = null;
-  try {
-    const row = await store.findOne<Page>(TABLES.pages, (p) => p.key === "about");
-    adminBody = row?.bodyI18n?.[locale as "it" | "en"] ?? null;
-  } catch {
-    adminBody = null;
-  }
-
   return (
     <>
       <section className="relative h-[60vh] min-h-[480px] overflow-hidden bg-neutral-950 text-white">
@@ -96,81 +86,70 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </div>
       </section>
 
-      {adminBody ? (
-        <section className="container-x py-24 max-w-3xl">
-          <div
-            className="prose prose-neutral max-w-none"
-            dangerouslySetInnerHTML={{ __html: adminBody }}
-          />
-        </section>
-      ) : (
-        <>
-          {BLOCKS.map((b, i) => (
-            <section key={b.eyebrowEn} className={i % 2 === 0 ? "bg-white" : "bg-neutral-50"}>
-              <div className="container-x py-24 md:py-32 grid gap-12 md:grid-cols-[1fr_2fr] items-start">
-                <div>
-                  <p className="text-xs tracking-[0.3em] text-[color:var(--color-brand)]">
-                    {isIt ? b.eyebrowIt : b.eyebrowEn}
-                  </p>
-                  <h2 className="mt-4 text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
-                    {isIt ? b.titleIt : b.titleEn}
-                  </h2>
-                </div>
-                <p className="text-lg leading-relaxed text-neutral-700">
-                  {isIt ? b.bodyIt : b.bodyEn}
-                </p>
-              </div>
-            </section>
-          ))}
-
-          <section className="bg-neutral-100">
-            <div className="container-x py-16">
-              <div className="aspect-[16/9] relative rounded-lg overflow-hidden">
-                <Image
-                  src="/brand/about.png"
-                  alt={isIt ? "Sessione di allenamento Revoring" : "Revoring training session"}
-                  fill
-                  sizes="(min-width: 1024px) 80rem, 100vw"
-                  className="object-cover"
-                />
-              </div>
-            </div>
-          </section>
-
-          <section className="border-y border-neutral-200 bg-white">
-            <div className="container-x py-20 grid grid-cols-2 md:grid-cols-4 gap-8">
-              <Stat n="300+" labelIt="Esercizi" labelEn="Exercises" isIt={isIt} />
-              <Stat n="14" labelIt="Anelli elastici" labelEn="Elastic rings" isIt={isIt} />
-              <Stat n="3" labelIt="Livelli di resistenza" labelEn="Resistance levels" isIt={isIt} />
-              <Stat n="30+" labelIt="Paesi" labelEn="Countries" isIt={isIt} />
-            </div>
-          </section>
-
-          <section className="bg-neutral-950 text-white">
-            <div className="container-x py-24 md:py-32 max-w-3xl">
-              <p className="text-xs tracking-[0.3em] text-neutral-400">
-                {isIt ? "L'AZIENDA" : "THE COMPANY"}
+      {BLOCKS.map((b, i) => (
+        <section key={b.eyebrowEn} className={i % 2 === 0 ? "bg-white" : "bg-neutral-50"}>
+          <div className="container-x py-24 md:py-32 grid gap-12 md:grid-cols-[1fr_2fr] items-start">
+            <div>
+              <p className="text-xs tracking-[0.3em] text-[color:var(--color-brand)]">
+                {isIt ? b.eyebrowIt : b.eyebrowEn}
               </p>
-              <h2 className="mt-4 text-3xl md:text-5xl font-semibold tracking-tight">
-                Tecnocomponent SRL
+              <h2 className="mt-4 text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
+                {isIt ? b.titleIt : b.titleEn}
               </h2>
-              <dl className="mt-10 grid sm:grid-cols-2 gap-x-12 gap-y-6 text-sm">
-                <Item label={isIt ? "Sede" : "Address"} value="Via Fossalta, 3895 — 47522 Cesena (FC), Italia" />
-                <Item label="P.IVA" value="03301570408" />
-                <Item label="REA" value="FO394793" />
-                <Item
-                  label="Email"
-                  value={
-                    <a href="mailto:info@revoring.com" className="underline underline-offset-4">
-                      info@revoring.com
-                    </a>
-                  }
-                />
-              </dl>
             </div>
-          </section>
-        </>
-      )}
+            <p className="text-lg leading-relaxed text-neutral-700">
+              {isIt ? b.bodyIt : b.bodyEn}
+            </p>
+          </div>
+        </section>
+      ))}
+
+      <section className="bg-neutral-100">
+        <div className="container-x py-16">
+          <div className="aspect-[16/9] relative rounded-lg overflow-hidden">
+            <Image
+              src="/brand/about.png"
+              alt={isIt ? "Sessione di allenamento Revoring" : "Revoring training session"}
+              fill
+              sizes="(min-width: 1024px) 80rem, 100vw"
+              className="object-cover"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-neutral-200 bg-white">
+        <div className="container-x py-20 grid grid-cols-2 md:grid-cols-4 gap-8">
+          <Stat n="300+" labelIt="Esercizi" labelEn="Exercises" isIt={isIt} />
+          <Stat n="14" labelIt="Anelli elastici" labelEn="Elastic rings" isIt={isIt} />
+          <Stat n="3" labelIt="Livelli di resistenza" labelEn="Resistance levels" isIt={isIt} />
+          <Stat n="30+" labelIt="Paesi" labelEn="Countries" isIt={isIt} />
+        </div>
+      </section>
+
+      <section className="bg-neutral-950 text-white">
+        <div className="container-x py-24 md:py-32 max-w-3xl">
+          <p className="text-xs tracking-[0.3em] text-neutral-400">
+            {isIt ? "L'AZIENDA" : "THE COMPANY"}
+          </p>
+          <h2 className="mt-4 text-3xl md:text-5xl font-semibold tracking-tight">
+            Tecnocomponent SRL
+          </h2>
+          <dl className="mt-10 grid sm:grid-cols-2 gap-x-12 gap-y-6 text-sm">
+            <Item label={isIt ? "Sede" : "Address"} value="Via Fossalta, 3895 — 47522 Cesena (FC), Italia" />
+            <Item label="P.IVA" value="03301570408" />
+            <Item label="REA" value="FO394793" />
+            <Item
+              label="Email"
+              value={
+                <a href="mailto:info@revoring.com" className="underline underline-offset-4">
+                  info@revoring.com
+                </a>
+              }
+            />
+          </dl>
+        </div>
+      </section>
     </>
   );
 }

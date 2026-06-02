@@ -46,7 +46,19 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# JSON file store — user data should never be committed
-/data/*.json
+# JSON file store
+# - PII / runtime tables are git-ignored (users, orders, contacts, audit, carts, favorites)
+# - Content tables (products, variants, blog posts, pages, categories, translations)
+#   are committed so the catalogue + pages travel with the repo.
 /data/*.json.tmp
-!/data/.gitkeep
+/data/users.json
+/data/orders.json
+/data/order_items.json
+/data/contacts.json
+/data/newsletter.json
+/data/audit.json
+/data/carts.json
+/data/cart_items.json
+/data/favorites.json
+/data/sessions.json
+/data/verification_tokens.json

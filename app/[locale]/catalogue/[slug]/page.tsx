@@ -7,6 +7,7 @@ import { buildMetadata } from "@/lib/seo";
 import { formatPrice } from "@/lib/utils";
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { FavoriteButton } from "@/components/shop/FavoriteButton";
+import { AdminEditLink } from "@/components/admin/AdminEditLink";
 import { auth } from "@/lib/auth";
 import type { Locale } from "@/i18n";
 import { env } from "@/lib/env";
@@ -77,6 +78,7 @@ export default async function ProductPage({ params }: { params: Promise<RoutePar
 
   return (
     <section className="container-x py-16">
+      <AdminEditLink href={`/admin/products/${product.id}`} variant="floating" label={locale === "it" ? "Modifica prodotto" : "Edit product"} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
       <div className="grid gap-12 lg:grid-cols-2">
         <div className="aspect-square relative bg-neutral-100 rounded-lg overflow-hidden">

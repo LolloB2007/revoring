@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { CookieBanner } from "@/components/site/CookieBanner";
 import { ConsentScripts } from "@/components/site/ConsentScripts";
+import { AdminBar } from "@/components/admin/AdminBar";
 import { env } from "@/lib/env";
 import { organizationLd } from "@/lib/seo";
 
@@ -42,6 +43,7 @@ export default async function LocaleLayout({
     <html lang={locale} className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-neutral-50 text-neutral-900">
         <NextIntlClientProvider locale={locale as Locale} messages={messages}>
+          <AdminBar locale={locale} />
           <SiteHeader locale={locale as Locale} />
           <main className="flex-1">{children}</main>
           <SiteFooter locale={locale as Locale} />

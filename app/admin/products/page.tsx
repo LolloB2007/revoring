@@ -12,9 +12,12 @@ export default async function AdminProductsPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight">Products</h1>
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Prodotti</h1>
+          <p className="mt-1 text-sm text-neutral-600">{products.length} prodotti nel catalogo.</p>
+        </div>
         <Button asChild>
-          <Link href="/admin/products/new">+ New product</Link>
+          <Link href="/admin/products/new">+ Nuovo prodotto</Link>
         </Button>
       </div>
       <div className="mt-8 rounded-lg border border-neutral-200 bg-white overflow-hidden">
@@ -22,10 +25,10 @@ export default async function AdminProductsPage() {
           <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wider text-neutral-500">
             <tr>
               <th className="px-4 py-3">Slug</th>
-              <th className="px-4 py-3">Name (EN)</th>
-              <th className="px-4 py-3">Price</th>
+              <th className="px-4 py-3">Nome (IT)</th>
+              <th className="px-4 py-3">Prezzo</th>
               <th className="px-4 py-3">Stock</th>
-              <th className="px-4 py-3">Active</th>
+              <th className="px-4 py-3">Attivo</th>
               <th />
             </tr>
           </thead>
@@ -33,19 +36,19 @@ export default async function AdminProductsPage() {
             {products.map((p) => (
               <tr key={p.id} className="hover:bg-neutral-50">
                 <td className="px-4 py-3 font-mono text-xs">{p.slug}</td>
-                <td className="px-4 py-3">{p.nameI18n.en}</td>
+                <td className="px-4 py-3">{p.nameI18n.it ?? p.nameI18n.en}</td>
                 <td className="px-4 py-3">{formatPrice(p.priceCents, p.currency)}</td>
                 <td className="px-4 py-3">{p.stock}</td>
                 <td className="px-4 py-3">{p.isActive ? "●" : "—"}</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/products/${p.id}`} className="text-xs underline">Edit</Link>
+                  <Link href={`/admin/products/${p.id}`} className="text-xs underline">Modifica</Link>
                 </td>
               </tr>
             ))}
             {products.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
-                  No products yet — click <em>New product</em> to add the first one.
+                  Nessun prodotto ancora — clicca <em>Nuovo prodotto</em> per aggiungerne uno.
                 </td>
               </tr>
             )}

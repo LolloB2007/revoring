@@ -8,18 +8,18 @@ export default async function AuditPage() {
     .slice(0, 200);
   return (
     <div>
-      <h1 className="text-3xl font-semibold tracking-tight">Audit log</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Registro attività</h1>
       <p className="mt-2 text-sm text-neutral-600">
-        Append-only record of every admin action. Last 200 entries.
+        Storico immutabile di ogni azione amministrativa. Ultime 200 voci.
       </p>
       <div className="mt-8 rounded-lg border border-neutral-200 bg-white overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wider text-neutral-500">
             <tr>
-              <th className="px-4 py-3">When</th>
-              <th className="px-4 py-3">Actor</th>
-              <th className="px-4 py-3">Action</th>
-              <th className="px-4 py-3">Entity</th>
+              <th className="px-4 py-3">Quando</th>
+              <th className="px-4 py-3">Utente</th>
+              <th className="px-4 py-3">Azione</th>
+              <th className="px-4 py-3">Entità</th>
               <th className="px-4 py-3">IP</th>
             </tr>
           </thead>
@@ -41,7 +41,7 @@ export default async function AuditPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-neutral-500">
-                  No actions yet.
+                  Nessuna azione registrata ancora.
                 </td>
               </tr>
             )}

@@ -9,9 +9,9 @@ export default async function TwoFactorSuccess() {
   const row = await store.findOne<User>(TABLES.users, (u) => u.id === session.user.id);
   return (
     <div className="max-w-xl">
-      <h1 className="text-3xl font-semibold tracking-tight">2FA enabled</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">2FA attivata</h1>
       <p className="mt-2 text-neutral-600">
-        Save these one-time backup codes in a password manager. Each works once if you lose access to your authenticator app.
+        Salva questi codici di backup in un password manager. Ciascuno è utilizzabile una sola volta in caso di perdita dell&apos;app authenticator.
       </p>
       <ul className="mt-6 grid grid-cols-2 gap-2 font-mono text-sm bg-white p-4 rounded-lg border border-neutral-200">
         {(row?.backupCodes ?? []).map((c) => (

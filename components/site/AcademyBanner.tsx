@@ -46,7 +46,7 @@ export function AcademyBanner() {
           className="aspect-[4/3] relative rounded-xl overflow-hidden"
         >
           <Image
-            src="/brand/about.png"
+            src="/brand/academy.jpg"
             alt={isIt ? "Sessione Revoring Academy" : "Revoring Academy session"}
             fill
             sizes="(min-width: 1024px) 50vw, 100vw"
