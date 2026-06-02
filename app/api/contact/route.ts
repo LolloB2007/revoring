@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { db, schema } from "@/lib/db";
+import { store, newId } from "@/lib/store";
+import { TABLES, type ContactSubmission } from "@/lib/models";
 import { sendMail } from "@/lib/email";
 import { limiters, clientIp } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
@@ -20,23 +21,22 @@ export async function POST(req: NextRequest) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid" }, { status: 400 });
 
-  await db.insert(schema.contactSubmissions).values({
+  await store.insert<ContactSubmission>(TABLES.contactSubmissions, {
+    id: newId(),
     name: parsed.data.name,
     email: parsed.data.email,
     message: parsed.data.message,
     locale: parsed.data.locale,
     ip,
     userAgent: req.headers.get("user-agent")?.slice(0, 512) ?? null,
+    createdAt: new Date(),
   });
 
   await sendMail({
     to: env.ADMIN_EMAIL,
     subject: `New contact form: ${parsed.data.name}`,
     replyTo: parsed.data.email,
-    html: `<p><b>${parsed.data.name}</b> (${parsed.data.email})</p><p>${parsed.data.message.replace(
-      /</g,
-      "&lt;",
-    )}</p>`,
+    html: `<p><b>${parsed.data.name}</b> (${parsed.data.email})</p><p>${parsed.data.message.replace(/</g, "&lt;")}</p>`,
     text: `${parsed.data.name} <${parsed.data.email}>\n\n${parsed.data.message}`,
   });
 

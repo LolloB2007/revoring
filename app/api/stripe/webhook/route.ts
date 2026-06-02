@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { getStripe } from "@/lib/stripe";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Order } from "@/lib/models";
 import { env } from "@/lib/env";
 import { clearCart } from "@/lib/cart";
 
-// Stripe webhooks need the raw body for signature verification.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -21,48 +20,46 @@ export async function POST(req: NextRequest) {
   try {
     event = getStripe().webhooks.constructEvent(raw, sig, env.STRIPE_WEBHOOK_SECRET);
   } catch (e) {
-    return NextResponse.json({ error: "bad-signature", detail: (e as Error).message }, { status: 400 });
+    return NextResponse.json(
+      { error: "bad-signature", detail: (e as Error).message },
+      { status: 400 },
+    );
   }
 
-  // Replay-window check: reject events older than 5 minutes.
   const FIVE_MIN = 5 * 60;
   if (event.created < Math.floor(Date.now() / 1000) - FIVE_MIN) {
     return NextResponse.json({ error: "stale" }, { status: 400 });
   }
 
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-    const orderId = (session.metadata as Record<string, string> | null)?.orderId;
+    const session = event.data.object as unknown as {
+      metadata?: Record<string, string>;
+      payment_intent?: string;
+      shipping_details?: { address?: Record<string, string> };
+      customer_details?: { email?: string };
+    };
+    const orderId = session.metadata?.orderId;
     if (orderId) {
-      await db
-        .update(schema.orders)
-        .set({
-          status: "paid",
-          stripePaymentIntent:
-            typeof session.payment_intent === "string" ? session.payment_intent : null,
-          shippingAddress:
-            // Stripe types differ across versions; cast through unknown.
-            ((session as unknown as { shipping_details?: { address?: Record<string, string> } })
-              .shipping_details?.address as Record<string, string> | undefined) ?? null,
-          email: session.customer_details?.email ?? "",
-        })
-        .where(eq(schema.orders.id, orderId));
-      // Best-effort: clear the cart that produced this order. The Stripe session
-      // doesn't carry the cart cookie, so we only do it for logged-in users.
+      await store.updateWhere<Order>(TABLES.orders, (o) => o.id === orderId, {
+        status: "paid",
+        stripePaymentIntent:
+          typeof session.payment_intent === "string" ? session.payment_intent : null,
+        shippingAddress: session.shipping_details?.address ?? null,
+        email: session.customer_details?.email ?? "",
+      });
       try {
         await clearCart();
       } catch {
-        // ignore
+        /* ignore */
       }
     }
   } else if (event.type === "charge.refunded" || event.type === "payment_intent.canceled") {
     const obj = event.data.object as { payment_intent?: string; id?: string };
     const pi = "payment_intent" in obj && obj.payment_intent ? obj.payment_intent : obj.id;
     if (pi && typeof pi === "string") {
-      await db
-        .update(schema.orders)
-        .set({ status: event.type.includes("refund") ? "refunded" : "cancelled" })
-        .where(eq(schema.orders.stripePaymentIntent, pi));
+      await store.updateWhere<Order>(TABLES.orders, (o) => o.stripePaymentIntent === pi, {
+        status: event.type.includes("refund") ? "refunded" : "cancelled",
+      });
     }
   }
 

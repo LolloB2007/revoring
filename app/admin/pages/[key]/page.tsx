@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Page } from "@/lib/models";
 import { PageForm } from "@/components/admin/PageForm";
 
 const VALID = ["about", "privacy", "cookies", "terms", "contacts"] as const;
@@ -9,7 +9,7 @@ type Key = (typeof VALID)[number];
 export default async function EditPagePage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
   if (!VALID.includes(key as Key)) notFound();
-  const [row] = await db.select().from(schema.pages).where(eq(schema.pages.key, key));
+  const row = await store.findOne<Page>(TABLES.pages, (p) => p.key === (key as Key));
   return (
     <div className="max-w-4xl">
       <h1 className="text-3xl font-semibold tracking-tight">{key}</h1>

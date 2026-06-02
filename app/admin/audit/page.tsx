@@ -1,12 +1,11 @@
-import { desc } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type AuditEntry } from "@/lib/models";
 
 export default async function AuditPage() {
-  const rows = await db
-    .select()
-    .from(schema.auditLog)
-    .orderBy(desc(schema.auditLog.createdAt))
-    .limit(200);
+  const all = await store.all<AuditEntry>(TABLES.audit);
+  const rows = all
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 200);
   return (
     <div>
       <h1 className="text-3xl font-semibold tracking-tight">Audit log</h1>
@@ -28,18 +27,23 @@ export default async function AuditPage() {
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className="px-4 py-3 text-neutral-500 whitespace-nowrap">
-                  {r.createdAt.toISOString().slice(0, 19).replace("T", " ")}
+                  {new Date(r.createdAt).toISOString().slice(0, 19).replace("T", " ")}
                 </td>
                 <td className="px-4 py-3">{r.actorEmail}</td>
                 <td className="px-4 py-3 font-mono text-xs">{r.action}</td>
                 <td className="px-4 py-3 font-mono text-xs">
-                  {r.entityType}{r.entityId ? `:${r.entityId.slice(0, 8)}` : ""}
+                  {r.entityType}
+                  {r.entityId ? `:${r.entityId.slice(0, 8)}` : ""}
                 </td>
                 <td className="px-4 py-3 text-neutral-500 font-mono text-xs">{r.ip}</td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-neutral-500">No actions yet.</td></tr>
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-neutral-500">
+                  No actions yet.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

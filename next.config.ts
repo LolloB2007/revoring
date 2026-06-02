@@ -1,6 +1,10 @@
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
+const projectRoot = dirname(fileURLToPath(import.meta.url));
+// next-intl requires a relative path here.
 const withNextIntl = createNextIntlPlugin("./i18n.ts");
 
 const securityHeaders = [
@@ -23,7 +27,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   turbopack: {
-    root: import.meta.dirname,
+    root: projectRoot,
   },
   experimental: {
     serverActions: {
@@ -31,9 +35,13 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: process.env.REVORING_R2_PUBLIC_HOST ?? "example-r2.r2.dev" },
-    ],
+    // Only register the R2 remote pattern when the hostname env var is a
+    // non-empty string; picomatch (used by Next's image config validator)
+    // throws "Expected a non-empty string" on an empty hostname.
+    remotePatterns: (() => {
+      const host = (process.env.REVORING_R2_PUBLIC_HOST ?? "").trim();
+      return host ? [{ protocol: "https" as const, hostname: host }] : [];
+    })(),
     formats: ["image/avif", "image/webp"],
   },
   async headers() {

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { nanoid } from "nanoid";
-import { eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store, newId, newToken } from "@/lib/store";
+import { TABLES, type NewsletterSubscriber } from "@/lib/models";
 import { sendMail } from "@/lib/email";
 import { limiters, clientIp } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
@@ -22,36 +21,40 @@ export async function POST(req: NextRequest) {
   const email = parsed.data.email.toLowerCase();
   const locale = parsed.data.locale;
 
-  // Upsert subscriber.
-  const existing = await db
-    .select()
-    .from(schema.newsletterSubscribers)
-    .where(eq(schema.newsletterSubscribers.email, email));
-  if (existing[0]?.confirmedAt) {
-    // Don't leak existence — return a generic OK with a marker the client can show neutrally.
+  const existing = await store.findOne<NewsletterSubscriber>(
+    TABLES.newsletterSubscribers,
+    (s) => s.email === email,
+  );
+  if (existing?.confirmedAt) {
     return NextResponse.json({ ok: true, alreadyConfirmed: true });
   }
 
-  const token = nanoid(40);
-  if (existing[0]) {
-    await db
-      .update(schema.newsletterSubscribers)
-      .set({ confirmationToken: token, locale })
-      .where(eq(schema.newsletterSubscribers.id, existing[0].id));
+  const token = newToken(40);
+  if (existing) {
+    await store.updateWhere<NewsletterSubscriber>(
+      TABLES.newsletterSubscribers,
+      (s) => s.id === existing.id,
+      { confirmationToken: token, locale },
+    );
   } else {
-    await db.insert(schema.newsletterSubscribers).values({
+    await store.insert<NewsletterSubscriber>(TABLES.newsletterSubscribers, {
+      id: newId(),
       email,
       locale,
       confirmationToken: token,
+      confirmedAt: null,
+      unsubscribedAt: null,
+      createdAt: new Date(),
     });
   }
 
   const confirmUrl = `${env.NEXT_PUBLIC_SITE_URL}/api/newsletter/confirm?token=${token}`;
   const subject = locale === "it" ? "Conferma la tua iscrizione" : "Confirm your subscription";
   const cta = locale === "it" ? "Conferma email" : "Confirm email";
-  const body = locale === "it"
-    ? `Clicca per confermare la tua iscrizione alla newsletter Revoring.`
-    : `Click to confirm your subscription to the Revoring newsletter.`;
+  const body =
+    locale === "it"
+      ? "Clicca per confermare la tua iscrizione alla newsletter Revoring."
+      : "Click to confirm your subscription to the Revoring newsletter.";
   await sendMail({
     to: email,
     subject,

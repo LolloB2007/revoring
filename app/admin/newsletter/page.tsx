@@ -1,18 +1,16 @@
-import { desc, isNotNull } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type NewsletterSubscriber } from "@/lib/models";
 import { NewsletterComposer } from "@/components/admin/NewsletterComposer";
 
 export default async function AdminNewsletterPage() {
-  const confirmed = await db
-    .select({
-      email: schema.newsletterSubscribers.email,
-      locale: schema.newsletterSubscribers.locale,
-      confirmedAt: schema.newsletterSubscribers.confirmedAt,
-    })
-    .from(schema.newsletterSubscribers)
-    .where(isNotNull(schema.newsletterSubscribers.confirmedAt))
-    .orderBy(desc(schema.newsletterSubscribers.createdAt))
-    .limit(500);
+  const all = await store.findMany<NewsletterSubscriber>(
+    TABLES.newsletterSubscribers,
+    (s) => !!s.confirmedAt && !s.unsubscribedAt,
+  );
+  const confirmed = all
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 500);
+
   return (
     <div className="max-w-4xl">
       <h1 className="text-3xl font-semibold tracking-tight">Newsletter</h1>
@@ -36,7 +34,9 @@ export default async function AdminNewsletterPage() {
                 <tr key={s.email}>
                   <td className="px-4 py-3">{s.email}</td>
                   <td className="px-4 py-3">{s.locale}</td>
-                  <td className="px-4 py-3 text-neutral-500">{s.confirmedAt?.toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-neutral-500">
+                    {s.confirmedAt ? new Date(s.confirmedAt).toLocaleDateString() : ""}
+                  </td>
                 </tr>
               ))}
             </tbody>

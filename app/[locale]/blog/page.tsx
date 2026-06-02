@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { setRequestLocale } from "next-intl/server";
-import { desc, isNotNull } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type BlogPost } from "@/lib/models";
 import { buildMetadata } from "@/lib/seo";
 import type { Locale } from "@/i18n";
 
@@ -22,11 +22,15 @@ export default async function BlogPage({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   setRequestLocale(locale);
 
-  let posts: Awaited<ReturnType<typeof loadPosts>> = [];
+  let posts: BlogPost[] = [];
   try {
-    posts = await loadPosts();
+    const all = await store.findMany<BlogPost>(TABLES.blogPosts, (p) => !!p.publishedAt);
+    posts = all.sort(
+      (a, b) =>
+        new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime(),
+    );
   } catch {
-    /* DB unavailable */
+    posts = [];
   }
 
   return (
@@ -63,20 +67,4 @@ export default async function BlogPage({ params }: { params: Promise<{ locale: s
       )}
     </section>
   );
-}
-
-async function loadPosts() {
-  return db
-    .select({
-      id: schema.blogPosts.id,
-      slug: schema.blogPosts.slug,
-      titleI18n: schema.blogPosts.titleI18n,
-      excerptI18n: schema.blogPosts.excerptI18n,
-      coverUrl: schema.blogPosts.coverUrl,
-      coverAlt: schema.blogPosts.coverAlt,
-    })
-    .from(schema.blogPosts)
-    .where(isNotNull(schema.blogPosts.publishedAt))
-    .orderBy(desc(schema.blogPosts.publishedAt))
-    .limit(50);
 }

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { eq, desc } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Product } from "@/lib/models";
 import { buildMetadata } from "@/lib/seo";
 import { formatPrice } from "@/lib/utils";
 import type { Locale } from "@/i18n";
@@ -24,11 +24,14 @@ export default async function CataloguePage({ params }: { params: Promise<{ loca
   const { locale } = await params;
   setRequestLocale(locale);
 
-  let products: Awaited<ReturnType<typeof loadProducts>> = [];
+  let products: Product[] = [];
   try {
-    products = await loadProducts();
+    const all = await store.findMany<Product>(TABLES.products, (p) => p.isActive);
+    products = all.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
   } catch {
-    // DB unavailable during build / first deploy — render empty state.
+    products = [];
   }
 
   return (
@@ -45,11 +48,7 @@ export default async function CataloguePage({ params }: { params: Promise<{ loca
       ) : (
         <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((p) => (
-            <Link
-              key={p.id}
-              href={`/${locale}/catalogue/${p.slug}`}
-              className="group block"
-            >
+            <Link key={p.id} href={`/${locale}/catalogue/${p.slug}`} className="group block">
               <div className="aspect-square overflow-hidden rounded-lg bg-neutral-100 relative">
                 {p.images[0]?.url && (
                   <Image
@@ -73,20 +72,4 @@ export default async function CataloguePage({ params }: { params: Promise<{ loca
       )}
     </section>
   );
-}
-
-async function loadProducts() {
-  return db
-    .select({
-      id: schema.products.id,
-      slug: schema.products.slug,
-      nameI18n: schema.products.nameI18n,
-      priceCents: schema.products.priceCents,
-      currency: schema.products.currency,
-      images: schema.products.images,
-    })
-    .from(schema.products)
-    .where(eq(schema.products.isActive, true))
-    .orderBy(desc(schema.products.createdAt))
-    .limit(48);
 }

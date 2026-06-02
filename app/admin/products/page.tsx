@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Product } from "@/lib/models";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 
 export default async function AdminProductsPage() {
-  const products = await db
-    .select()
-    .from(schema.products)
-    .orderBy(desc(schema.products.createdAt));
+  const all = await store.all<Product>(TABLES.products);
+  const products = all.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -38,9 +38,7 @@ export default async function AdminProductsPage() {
                 <td className="px-4 py-3">{p.stock}</td>
                 <td className="px-4 py-3">{p.isActive ? "●" : "—"}</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/products/${p.id}`} className="text-xs underline">
-                    Edit
-                  </Link>
+                  <Link href={`/admin/products/${p.id}`} className="text-xs underline">Edit</Link>
                 </td>
               </tr>
             ))}

@@ -1,4 +1,5 @@
-import { db, schema } from "./db";
+import { store, newId } from "./store";
+import { TABLES, type AuditEntry } from "./models";
 import { clientIp } from "./rate-limit";
 
 /**
@@ -16,19 +17,20 @@ export async function logAudit(input: {
   headers: Headers;
 }): Promise<void> {
   try {
-    await db.insert(schema.auditLog).values({
+    await store.insert<AuditEntry>(TABLES.audit, {
+      id: newId(),
       actorId: input.actorId,
       actorEmail: input.actorEmail,
       action: input.action,
-      entityType: input.entityType,
-      entityId: input.entityId,
+      entityType: input.entityType ?? null,
+      entityId: input.entityId ?? null,
       before: input.before ?? null,
       after: input.after ?? null,
       ip: clientIp(input.headers),
       userAgent: input.headers.get("user-agent")?.slice(0, 512) ?? null,
+      createdAt: new Date(),
     });
   } catch (e) {
-    // Audit logging must never break the operation; just warn.
     console.error("[audit] failed to log", e);
   }
 }

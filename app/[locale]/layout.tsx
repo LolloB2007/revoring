@@ -51,7 +51,10 @@ export default async function LocaleLayout({
         <script
           type="application/ld+json"
           nonce={nonce}
-          // Org JSON-LD on every page; safe constant.
+          // Browsers hide the nonce attribute after parse (CSP-spec), which
+          // causes a benign client/server diff. The content is a static
+          // constant, so suppress the warning here.
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd()) }}
         />
       </body>

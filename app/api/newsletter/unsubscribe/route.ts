@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac } from "node:crypto";
-import { eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type NewsletterSubscriber } from "@/lib/models";
 import { env } from "@/lib/env";
 
 function unsubSig(email: string): string {
@@ -22,9 +22,10 @@ export async function GET(req: NextRequest) {
   const sig = req.nextUrl.searchParams.get("sig");
   if (!email || !sig) return NextResponse.json({ error: "missing" }, { status: 400 });
   if (sig !== unsubSig(email)) return NextResponse.json({ error: "bad-signature" }, { status: 400 });
-  await db
-    .update(schema.newsletterSubscribers)
-    .set({ unsubscribedAt: new Date() })
-    .where(eq(schema.newsletterSubscribers.email, email.toLowerCase()));
+  await store.updateWhere<NewsletterSubscriber>(
+    TABLES.newsletterSubscribers,
+    (s) => s.email === email.toLowerCase(),
+    { unsubscribedAt: new Date() },
+  );
   return NextResponse.json({ ok: true });
 }

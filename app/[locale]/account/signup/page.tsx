@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { setRequestLocale } from "next-intl/server";
-import { SigninForm } from "@/components/site/SigninForm";
+import { SignupForm } from "@/components/site/SignupForm";
 
-export default async function SigninPage({
+export default async function SignupPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
+  searchParams: Promise<{ callbackUrl?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -17,27 +17,23 @@ export default async function SigninPage({
   return (
     <section className="container-x py-24 max-w-md">
       <h1 className="text-4xl font-semibold tracking-tight">
-        {isIt ? "Accedi" : "Sign in"}
+        {isIt ? "Crea il tuo account" : "Create your account"}
       </h1>
       <p className="mt-2 text-sm text-neutral-600">
         {isIt
-          ? "Entra con la tua email e password."
-          : "Sign in with your email and password."}
+          ? "Per ordini, preferiti e accesso al supporto."
+          : "For orders, favorites, and access to support."}
       </p>
 
-      <SigninForm
-        locale={locale as "it" | "en"}
-        callbackUrl={sp.callbackUrl}
-        urlError={sp.error}
-      />
+      <SignupForm locale={locale as "it" | "en"} />
 
       <p className="mt-8 text-sm text-neutral-600">
-        {isIt ? "Non hai un account? " : "Don't have an account? "}
+        {isIt ? "Hai già un account? " : "Already have an account? "}
         <Link
-          href={`/${locale}/account/signup${sp.callbackUrl ? `?callbackUrl=${encodeURIComponent(sp.callbackUrl)}` : ""}`}
+          href={`/${locale}/account/signin${sp.callbackUrl ? `?callbackUrl=${encodeURIComponent(sp.callbackUrl)}` : ""}`}
           className="underline underline-offset-4 hover:text-neutral-900"
         >
-          {isIt ? "Registrati" : "Sign up"}
+          {isIt ? "Accedi" : "Sign in"}
         </Link>
       </p>
     </section>

@@ -19,6 +19,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1058.0",
     "@neondatabase/serverless": "^1.1.0",
     "@node-rs/argon2": "^2.0.2",
+    "@radix-ui/react-slot": "^1.2.4",
     "@tiptap/extension-image": "^3.24.0",
     "@tiptap/extension-link": "^3.24.0",
     "@tiptap/react": "^3.24.0",

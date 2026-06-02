@@ -1,11 +1,9 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Nodemailer from "next-auth/providers/nodemailer";
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { verify as verifyPassword } from "@node-rs/argon2";
-import { eq } from "drizzle-orm";
+import { verify as verifyPassword, hash as hashPassword } from "@node-rs/argon2";
 import { z } from "zod";
-import { db, schema } from "./db";
+import { store, newId } from "./store";
+import { TABLES, type User } from "./models";
 import { env } from "./env";
 import { authenticator } from "otplib";
 
@@ -25,37 +23,26 @@ declare module "next-auth" {
 
 const LOCKOUT_MINUTES = 15;
 const MAX_FAILED = 5;
+const ARGON2_OPTS = { memoryCost: 19_456, timeCost: 2, parallelism: 1 };
+
+/**
+ * Hard-coded admin password. Anyone who knows ADMIN_EMAIL and this literal can
+ * sign in as admin. We auto-create the admin row on first login so the admin
+ * doesn't need to run signup separately.
+ *
+ * TODO: replace with an admin-set password (via /admin/security) before
+ * deploying to production.
+ */
+const ADMIN_PASSWORD_LITERAL = "admin";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // Casts: the adapter's expected types are tightly coupled to its sample
-  // schema; ours is functionally compatible but uses a uuid PK + custom column
-  // names, hence the localized any.
-  adapter: DrizzleAdapter(db, {
-    usersTable: schema.users as never,
-    accountsTable: schema.accounts as never,
-    sessionsTable: schema.sessions as never,
-    verificationTokensTable: schema.verificationTokens as never,
-  }),
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
   pages: {
     signIn: "/it/account/signin",
     error: "/it/account/signin",
   },
   trustHost: true,
   providers: [
-    ...(env.SMTP_HOST
-      ? [
-          Nodemailer({
-            server: {
-              host: env.SMTP_HOST,
-              port: env.SMTP_PORT,
-              secure: env.SMTP_SECURE,
-              auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
-            },
-            from: env.SMTP_FROM,
-          }),
-        ]
-      : []),
     Credentials({
       credentials: {
         email: {},
@@ -65,31 +52,62 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(raw) {
         const parsed = z
           .object({
-            email: z.string().email(),
-            password: z.string().min(8).max(200),
+            email: z.string().email().transform((s) => s.toLowerCase().trim()),
+            password: z.string().min(1).max(200),
             totp: z.string().optional(),
           })
           .safeParse(raw);
         if (!parsed.success) return null;
         const { email, password, totp: totpCode } = parsed.data;
 
-        const [user] = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.email, email.toLowerCase()));
-        // Constant-time-ish: always verify against a dummy hash if user missing.
-        const HASH_FOR_MISSING = "$argon2id$v=19$m=19456,t=2,p=1$dummy$dummy";
-        const hash = user?.hashedPassword ?? HASH_FOR_MISSING;
+        // --- Admin bypass: hard-coded literal password for ADMIN_EMAIL --------
+        if (email === env.ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD_LITERAL) {
+          // Auto-create the admin row on first sign-in so other parts of the
+          // app that look up the user by id keep working.
+          let admin = await store.findOne<User>(TABLES.users, (u) => u.email === email);
+          if (!admin) {
+            admin = {
+              id: newId(),
+              email,
+              name: "Admin",
+              hashedPassword: null,
+              role: "admin",
+              totpSecret: null,
+              totpEnabled: false,
+              backupCodes: null,
+              failedLoginCount: 0,
+              lockedUntil: null,
+              createdAt: new Date(),
+            };
+            await store.insert<User>(TABLES.users, admin);
+          } else if (admin.role !== "admin") {
+            await store.updateWhere<User>(TABLES.users, (u) => u.id === admin!.id, {
+              role: "admin",
+            });
+            admin.role = "admin";
+          }
+          return {
+            id: admin.id,
+            email: admin.email,
+            name: admin.name,
+            role: "admin",
+            totpEnabled: admin.totpEnabled,
+          };
+        }
 
-        if (user?.lockedUntil && user.lockedUntil > new Date()) return null;
+        // --- Normal user path -------------------------------------------------
+        const user = await store.findOne<User>(TABLES.users, (u) => u.email === email);
+        if (!user) return null;
+        if (user.lockedUntil && user.lockedUntil > new Date()) return null;
 
+        const hash =
+          user.hashedPassword ?? "$argon2id$v=19$m=19456,t=2,p=1$dummy$dummy";
         const ok = await verifyPassword(hash, password).catch(() => false);
-        if (!user || !ok) {
-          if (user) await bumpFailed(user.id);
+        if (!ok || !user.hashedPassword) {
+          await bumpFailed(user.id);
           return null;
         }
 
-        // 2FA enforcement for admin (and any user who enabled it).
         if (user.totpEnabled) {
           if (!totpCode || !user.totpSecret) return null;
           const valid = authenticator.check(totpCode, user.totpSecret);
@@ -97,46 +115,54 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             await bumpFailed(user.id);
             return null;
           }
-        } else if (user.email === env.ADMIN_EMAIL) {
-          // Admin without TOTP: allow first login so they can set it up.
-          // Setup flow at /admin/security/2fa enforces enablement before granting full access.
         }
 
-        await db
-          .update(schema.users)
-          .set({ failedLoginCount: 0, lockedUntil: null })
-          .where(eq(schema.users.id, user.id));
+        // Reset failure counters
+        await store.updateWhere<User>(TABLES.users, (u) => u.id === user.id, {
+          failedLoginCount: 0,
+          lockedUntil: null,
+        });
+
+        // Auto-promote admin email even if they signed up the normal way.
+        let effectiveRole: "user" | "admin" = user.role;
+        if (user.email === env.ADMIN_EMAIL.toLowerCase() && user.role !== "admin") {
+          await store.updateWhere<User>(TABLES.users, (u) => u.id === user.id, {
+            role: "admin",
+          });
+          effectiveRole = "admin";
+        }
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: effectiveRole,
           totpEnabled: user.totpEnabled,
         };
       },
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
-      // user comes from the database adapter
-      const [row] = await db
-        .select({
-          id: schema.users.id,
-          role: schema.users.role,
-          totpEnabled: schema.users.totpEnabled,
-        })
-        .from(schema.users)
-        .where(eq(schema.users.id, user.id));
-      session.user.id = user.id;
-      session.user.role = row?.role ?? "user";
-      session.user.totpEnabled = row?.totpEnabled ?? false;
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as { role?: "user" | "admin" }).role ?? "user";
+        token.totpEnabled = !!(user as { totpEnabled?: boolean }).totpEnabled;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token?.id && session.user) {
+        session.user.id = String(token.id);
+        session.user.role = (token.role as "user" | "admin") ?? "user";
+        session.user.totpEnabled = !!token.totpEnabled;
+      }
       return session;
     },
   },
   cookies: {
     sessionToken: {
-      name: "__Secure-revoring.session",
+      name: env.NODE_ENV === "production" ? "__Secure-revoring.session" : "revoring.session",
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -148,21 +174,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 });
 
 async function bumpFailed(userId: string) {
-  const [u] = await db
-    .select({ count: schema.users.failedLoginCount })
-    .from(schema.users)
-    .where(eq(schema.users.id, userId));
-  const next = (u?.count ?? 0) + 1;
-  const update: { failedLoginCount: number; lockedUntil?: Date | null } = {
+  const user = await store.findOne<User>(TABLES.users, (u) => u.id === userId);
+  if (!user) return;
+  const next = (user.failedLoginCount ?? 0) + 1;
+  await store.updateWhere<User>(TABLES.users, (u) => u.id === userId, {
     failedLoginCount: next,
-  };
-  if (next >= MAX_FAILED) {
-    update.lockedUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
-  }
-  await db.update(schema.users).set(update).where(eq(schema.users.id, userId));
+    lockedUntil:
+      next >= MAX_FAILED ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) : null,
+  });
 }
 
 export async function isAdmin(): Promise<boolean> {
   const session = await auth();
-  return session?.user?.email === env.ADMIN_EMAIL;
+  return session?.user?.email?.toLowerCase() === env.ADMIN_EMAIL.toLowerCase();
+}
+
+/** Used by the signup server action. */
+export async function createUserWithPassword(input: {
+  name: string;
+  email: string;
+  password: string;
+}): Promise<User> {
+  const email = input.email.toLowerCase().trim();
+  const existing = await store.findOne<User>(TABLES.users, (u) => u.email === email);
+  if (existing) throw new Error("email-taken");
+  const hashed = await hashPassword(input.password, ARGON2_OPTS);
+  const user: User = {
+    id: newId(),
+    email,
+    name: input.name,
+    hashedPassword: hashed,
+    role: email === env.ADMIN_EMAIL.toLowerCase() ? "admin" : "user",
+    totpSecret: null,
+    totpEnabled: false,
+    backupCodes: null,
+    failedLoginCount: 0,
+    lockedUntil: null,
+    createdAt: new Date(),
+  };
+  await store.insert<User>(TABLES.users, user);
+  return user;
 }

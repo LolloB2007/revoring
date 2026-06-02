@@ -1,17 +1,12 @@
 import { auth } from "@/lib/auth";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
-import { db, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { store } from "@/lib/store";
+import { TABLES, type User } from "@/lib/models";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-/**
- * TOTP setup. First load: generate a secret + QR (not persisted until verified).
- * The user scans the QR with an authenticator app, types the 6-digit code, and
- * the action persists the secret + totp_enabled=true and shows backup codes.
- */
 export default async function TwoFactorPage({
   searchParams,
 }: {
@@ -23,18 +18,16 @@ export default async function TwoFactorPage({
   const sp = await searchParams;
   const secret = sp.secret ?? authenticator.generateSecret();
   const otpauth =
-    sp.otpauth ??
-    authenticator.keyuri(session.user.email ?? "admin", "Revoring Admin", secret);
+    sp.otpauth ?? authenticator.keyuri(session.user.email ?? "admin", "Revoring Admin", secret);
   const qrSvg = await QRCode.toString(otpauth, { type: "svg", margin: 1, width: 240 });
 
   async function enable(formData: FormData) {
     "use server";
-    const session = await auth();
-    if (!session?.user?.id) return;
+    const s = await auth();
+    if (!s?.user?.id) return;
     const code = String(formData.get("code") ?? "");
     const submittedSecret = String(formData.get("secret") ?? "");
     if (!authenticator.check(code, submittedSecret)) {
-      // bounce back with the same secret so user can try again
       return redirect(
         `/admin/security/2fa?secret=${encodeURIComponent(submittedSecret)}&error=invalid`,
       );
@@ -45,10 +38,11 @@ export default async function TwoFactorPage({
         .join("")
         .slice(0, 10),
     );
-    await db
-      .update(schema.users)
-      .set({ totpSecret: submittedSecret, totpEnabled: true, backupCodes: backup })
-      .where(eq(schema.users.id, session.user.id));
+    await store.updateWhere<User>(TABLES.users, (u) => u.id === s.user!.id, {
+      totpSecret: submittedSecret,
+      totpEnabled: true,
+      backupCodes: backup,
+    });
     redirect("/admin/security/2fa/success");
   }
 

@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
-import { eq, isNotNull } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { locales } from "@/i18n";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Product, type BlogPost } from "@/lib/models";
 
 const staticPaths = [
   "",
@@ -37,15 +37,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   try {
-    const products = await db
-      .select({ slug: schema.products.slug, updatedAt: schema.products.updatedAt })
-      .from(schema.products)
-      .where(eq(schema.products.isActive, true));
+    const products = await store.findMany<Product>(TABLES.products, (p) => p.isActive);
     for (const p of products) {
       for (const locale of locales) {
         entries.push({
           url: `${base}/${locale}/catalogue/${p.slug}`,
-          lastModified: p.updatedAt,
+          lastModified: new Date(p.updatedAt),
           changeFrequency: "weekly",
           priority: 0.8,
           alternates: {
@@ -57,15 +54,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
 
-    const posts = await db
-      .select({ slug: schema.blogPosts.slug, updatedAt: schema.blogPosts.updatedAt })
-      .from(schema.blogPosts)
-      .where(isNotNull(schema.blogPosts.publishedAt));
+    const posts = await store.findMany<BlogPost>(TABLES.blogPosts, (p) => !!p.publishedAt);
     for (const post of posts) {
       for (const locale of locales) {
         entries.push({
           url: `${base}/${locale}/blog/${post.slug}`,
-          lastModified: post.updatedAt,
+          lastModified: new Date(post.updatedAt),
           changeFrequency: "monthly",
           priority: 0.6,
           alternates: {
@@ -77,7 +71,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
   } catch {
-    // DB unavailable at build time — only static paths included.
+    /* empty store at build time */
   }
 
   return entries;

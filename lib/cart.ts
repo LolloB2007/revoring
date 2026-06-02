@@ -1,47 +1,46 @@
 import { cookies } from "next/headers";
-import { and, eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
-import { db, schema } from "./db";
+import { store, newId, newToken } from "./store";
+import { TABLES, type Cart, type CartItem, type Product, type ProductVariant } from "./models";
 import { auth } from "./auth";
 
 const CART_COOKIE = "revoring.cart";
 
-/**
- * Find or create the active cart for the current visitor. Logged-in users get
- * a user-scoped cart; guests get a cookie-scoped cart that can be merged into
- * their user cart on sign-in.
- */
 export async function getOrCreateCart(): Promise<{ id: string }> {
   const session = await auth();
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(CART_COOKIE)?.value;
 
   if (session?.user?.id) {
-    const [existing] = await db
-      .select()
-      .from(schema.carts)
-      .where(eq(schema.carts.userId, session.user.id));
+    const existing = await store.findOne<Cart>(TABLES.carts, (c) => c.userId === session.user.id);
     if (existing) return { id: existing.id };
-    const [created] = await db
-      .insert(schema.carts)
-      .values({ userId: session.user.id })
-      .returning({ id: schema.carts.id });
+    const created: Cart = {
+      id: newId(),
+      userId: session.user.id,
+      sessionToken: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await store.insert(TABLES.carts, created);
     return { id: created.id };
   }
 
   if (sessionToken) {
-    const [existing] = await db
-      .select()
-      .from(schema.carts)
-      .where(eq(schema.carts.sessionToken, sessionToken));
+    const existing = await store.findOne<Cart>(
+      TABLES.carts,
+      (c) => c.sessionToken === sessionToken,
+    );
     if (existing) return { id: existing.id };
   }
 
-  const token = nanoid(40);
-  const [created] = await db
-    .insert(schema.carts)
-    .values({ sessionToken: token })
-    .returning({ id: schema.carts.id });
+  const token = newToken(40);
+  const created: Cart = {
+    id: newId(),
+    userId: null,
+    sessionToken: token,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  await store.insert(TABLES.carts, created);
   cookieStore.set(CART_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
@@ -52,81 +51,89 @@ export async function getOrCreateCart(): Promise<{ id: string }> {
   return { id: created.id };
 }
 
-/**
- * Hydrate the cart with product + variant data and DB-priced totals. Never
- * trust client-supplied prices.
- */
-export async function getCartView() {
+export interface CartViewItem {
+  itemId: string;
+  qty: number;
+  variantId: string;
+  sku: string;
+  attrs: Record<string, string>;
+  productId: string;
+  productSlug: string;
+  nameI18n: { en: string; it: string };
+  unitPriceCents: number;
+  currency: string;
+  image: string | null;
+  lineTotalCents: number;
+  stock: number;
+}
+
+export async function getCartView(): Promise<{
+  cartId: string;
+  items: CartViewItem[];
+  subtotalCents: number;
+}> {
   const { id: cartId } = await getOrCreateCart();
-  const rows = await db
-    .select({
-      itemId: schema.cartItems.id,
-      qty: schema.cartItems.qty,
-      variantId: schema.productVariants.id,
-      sku: schema.productVariants.sku,
-      variantAttrs: schema.productVariants.attrs,
-      variantPriceCents: schema.productVariants.priceCents,
-      productId: schema.products.id,
-      productSlug: schema.products.slug,
-      productNameI18n: schema.products.nameI18n,
-      productPriceCents: schema.products.priceCents,
-      productImages: schema.products.images,
-      currency: schema.products.currency,
-      stock: schema.productVariants.stock,
-    })
-    .from(schema.cartItems)
-    .innerJoin(schema.productVariants, eq(schema.cartItems.variantId, schema.productVariants.id))
-    .innerJoin(schema.products, eq(schema.productVariants.productId, schema.products.id))
-    .where(eq(schema.cartItems.cartId, cartId));
+  const items = await store.findMany<CartItem>(TABLES.cartItems, (i) => i.cartId === cartId);
+  const variants = await store.all<ProductVariant>(TABLES.variants);
+  const products = await store.all<Product>(TABLES.products);
 
-  const items = rows.map((r) => {
-    const unit = r.variantPriceCents ?? r.productPriceCents;
-    return {
-      itemId: r.itemId,
-      qty: r.qty,
-      variantId: r.variantId,
-      sku: r.sku,
-      attrs: r.variantAttrs,
-      productId: r.productId,
-      productSlug: r.productSlug,
-      nameI18n: r.productNameI18n,
+  const view: CartViewItem[] = [];
+  for (const it of items) {
+    const v = variants.find((x) => x.id === it.variantId);
+    if (!v) continue;
+    const p = products.find((x) => x.id === v.productId);
+    if (!p) continue;
+    const unit = v.priceCents ?? p.priceCents;
+    view.push({
+      itemId: it.id,
+      qty: it.qty,
+      variantId: v.id,
+      sku: v.sku,
+      attrs: v.attrs,
+      productId: p.id,
+      productSlug: p.slug,
+      nameI18n: p.nameI18n,
       unitPriceCents: unit,
-      currency: r.currency,
-      image: r.productImages[0]?.url ?? null,
-      lineTotalCents: unit * r.qty,
-      stock: r.stock,
-    };
-  });
-
-  const subtotal = items.reduce((a, b) => a + b.lineTotalCents, 0);
-  return { cartId, items, subtotalCents: subtotal };
+      currency: p.currency,
+      image: p.images[0]?.url ?? null,
+      lineTotalCents: unit * it.qty,
+      stock: v.stock,
+    });
+  }
+  const subtotal = view.reduce((a, b) => a + b.lineTotalCents, 0);
+  return { cartId, items: view, subtotalCents: subtotal };
 }
 
 export async function setCartQty(variantId: string, qty: number): Promise<void> {
   const { id: cartId } = await getOrCreateCart();
   const safeQty = Math.max(0, Math.min(99, Math.floor(qty)));
 
-  // Stock check
-  const [v] = await db
-    .select({ stock: schema.productVariants.stock })
-    .from(schema.productVariants)
-    .where(eq(schema.productVariants.id, variantId));
+  const v = await store.findOne<ProductVariant>(TABLES.variants, (x) => x.id === variantId);
   if (!v) return;
   const clamped = Math.min(safeQty, v.stock);
 
-  const [existing] = await db
-    .select()
-    .from(schema.cartItems)
-    .where(and(eq(schema.cartItems.cartId, cartId), eq(schema.cartItems.variantId, variantId)));
+  const existing = await store.findOne<CartItem>(
+    TABLES.cartItems,
+    (i) => i.cartId === cartId && i.variantId === variantId,
+  );
 
   if (clamped === 0) {
-    if (existing) await db.delete(schema.cartItems).where(eq(schema.cartItems.id, existing.id));
+    if (existing) {
+      await store.deleteWhere<CartItem>(TABLES.cartItems, (i) => i.id === existing.id);
+    }
     return;
   }
   if (existing) {
-    await db.update(schema.cartItems).set({ qty: clamped }).where(eq(schema.cartItems.id, existing.id));
+    await store.updateWhere<CartItem>(TABLES.cartItems, (i) => i.id === existing.id, {
+      qty: clamped,
+    });
   } else {
-    await db.insert(schema.cartItems).values({ cartId, variantId, qty: clamped });
+    await store.insert<CartItem>(TABLES.cartItems, {
+      id: newId(),
+      cartId,
+      variantId,
+      qty: clamped,
+    });
   }
 }
 
@@ -138,5 +145,5 @@ export async function addToCart(variantId: string, qty = 1): Promise<void> {
 
 export async function clearCart(): Promise<void> {
   const { id: cartId } = await getOrCreateCart();
-  await db.delete(schema.cartItems).where(eq(schema.cartItems.cartId, cartId));
+  await store.deleteWhere<CartItem>(TABLES.cartItems, (i) => i.cartId === cartId);
 }

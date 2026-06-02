@@ -1,11 +1,11 @@
 "use server";
 
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { db, schema } from "@/lib/db";
+import { store, newId } from "@/lib/store";
+import { TABLES, type Product, type ProductVariant } from "@/lib/models";
 import { requireAdmin } from "@/lib/admin-guard";
 import { logAudit } from "@/lib/audit";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -53,26 +53,24 @@ function parseFromForm(fd: FormData) {
 export async function upsertProductAction(fd: FormData) {
   const session = await requireAdmin();
   const data = parseFromForm(fd);
+  const now = new Date();
 
   if (data.id) {
-    const [before] = await db.select().from(schema.products).where(eq(schema.products.id, data.id));
-    const [updated] = await db
-      .update(schema.products)
-      .set({
-        slug: data.slug,
-        nameI18n: data.nameI18n,
-        descriptionI18n: data.descriptionI18n,
-        priceCents: data.priceCents,
-        currency: data.currency,
-        stock: data.stock,
-        isActive: data.isActive,
-        weightGrams: data.weightGrams ?? null,
-        images: data.images,
-        categoryId: data.categoryId ?? null,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.products.id, data.id))
-      .returning();
+    const before = await store.findOne<Product>(TABLES.products, (p) => p.id === data.id);
+    await store.updateWhere<Product>(TABLES.products, (p) => p.id === data.id, {
+      slug: data.slug,
+      nameI18n: data.nameI18n,
+      descriptionI18n: data.descriptionI18n,
+      priceCents: data.priceCents,
+      currency: data.currency,
+      stock: data.stock,
+      isActive: data.isActive,
+      weightGrams: data.weightGrams ?? null,
+      images: data.images,
+      categoryId: data.categoryId ?? null,
+      updatedAt: now,
+    });
+    const after = await store.findOne<Product>(TABLES.products, (p) => p.id === data.id);
     await logAudit({
       actorId: session.user.id,
       actorEmail: session.user.email ?? null,
@@ -80,30 +78,32 @@ export async function upsertProductAction(fd: FormData) {
       entityType: "product",
       entityId: data.id,
       before,
-      after: updated,
+      after,
       headers: await headers(),
     });
   } else {
-    const [created] = await db
-      .insert(schema.products)
-      .values({
-        slug: data.slug,
-        nameI18n: data.nameI18n,
-        descriptionI18n: data.descriptionI18n,
-        priceCents: data.priceCents,
-        currency: data.currency,
-        stock: data.stock,
-        isActive: data.isActive,
-        weightGrams: data.weightGrams ?? null,
-        images: data.images,
-        categoryId: data.categoryId ?? null,
-      })
-      .returning();
-    // Auto-create a default variant so the product is purchasable immediately.
-    await db.insert(schema.productVariants).values({
+    const created: Product = {
+      id: newId(),
+      slug: data.slug,
+      nameI18n: data.nameI18n,
+      descriptionI18n: data.descriptionI18n,
+      priceCents: data.priceCents,
+      currency: data.currency,
+      stock: data.stock,
+      isActive: data.isActive,
+      weightGrams: data.weightGrams ?? null,
+      images: data.images,
+      categoryId: data.categoryId ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await store.insert<Product>(TABLES.products, created);
+    await store.insert<ProductVariant>(TABLES.variants, {
+      id: newId(),
       productId: created.id,
       sku: data.defaultVariantSku,
       attrs: {},
+      priceCents: null,
       stock: data.stock,
     });
     await logAudit({
@@ -126,8 +126,9 @@ export async function upsertProductAction(fd: FormData) {
 export async function deleteProductAction(fd: FormData) {
   const session = await requireAdmin();
   const id = z.string().uuid().parse(fd.get("id"));
-  const [before] = await db.select().from(schema.products).where(eq(schema.products.id, id));
-  await db.delete(schema.products).where(eq(schema.products.id, id));
+  const before = await store.findOne<Product>(TABLES.products, (p) => p.id === id);
+  await store.deleteWhere<ProductVariant>(TABLES.variants, (v) => v.productId === id);
+  await store.deleteWhere<Product>(TABLES.products, (p) => p.id === id);
   await logAudit({
     actorId: session.user.id,
     actorEmail: session.user.email ?? null,

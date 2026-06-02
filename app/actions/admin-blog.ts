@@ -1,11 +1,11 @@
 "use server";
 
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { db, schema } from "@/lib/db";
+import { store, newId } from "@/lib/store";
+import { TABLES, type BlogPost } from "@/lib/models";
 import { requireAdmin } from "@/lib/admin-guard";
 import { logAudit } from "@/lib/audit";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -46,24 +46,22 @@ export async function upsertPostAction(fd: FormData) {
   const session = await requireAdmin();
   const data = parse(fd);
   const publishedAt = data.publish ? new Date() : null;
+  const now = new Date();
 
   if (data.id) {
-    const [before] = await db.select().from(schema.blogPosts).where(eq(schema.blogPosts.id, data.id));
-    const [updated] = await db
-      .update(schema.blogPosts)
-      .set({
-        slug: data.slug,
-        titleI18n: data.titleI18n,
-        excerptI18n: data.excerptI18n,
-        bodyI18n: data.bodyI18n,
-        coverUrl: data.coverUrl ?? null,
-        coverAlt: data.coverAlt ?? null,
-        tags: data.tags,
-        publishedAt: publishedAt ?? before?.publishedAt ?? null,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.blogPosts.id, data.id))
-      .returning();
+    const before = await store.findOne<BlogPost>(TABLES.blogPosts, (p) => p.id === data.id);
+    await store.updateWhere<BlogPost>(TABLES.blogPosts, (p) => p.id === data.id, (row) => ({
+      slug: data.slug,
+      titleI18n: data.titleI18n,
+      excerptI18n: data.excerptI18n,
+      bodyI18n: data.bodyI18n,
+      coverUrl: data.coverUrl ?? null,
+      coverAlt: data.coverAlt ?? null,
+      tags: data.tags,
+      publishedAt: publishedAt ?? row.publishedAt ?? null,
+      updatedAt: now,
+    }));
+    const after = await store.findOne<BlogPost>(TABLES.blogPosts, (p) => p.id === data.id);
     await logAudit({
       actorId: session.user.id,
       actorEmail: session.user.email ?? null,
@@ -71,24 +69,25 @@ export async function upsertPostAction(fd: FormData) {
       entityType: "blog_post",
       entityId: data.id,
       before,
-      after: updated,
+      after,
       headers: await headers(),
     });
   } else {
-    const [created] = await db
-      .insert(schema.blogPosts)
-      .values({
-        slug: data.slug,
-        titleI18n: data.titleI18n,
-        excerptI18n: data.excerptI18n,
-        bodyI18n: data.bodyI18n,
-        coverUrl: data.coverUrl ?? null,
-        coverAlt: data.coverAlt ?? null,
-        tags: data.tags,
-        publishedAt,
-        authorId: session.user.id,
-      })
-      .returning();
+    const created: BlogPost = {
+      id: newId(),
+      slug: data.slug,
+      titleI18n: data.titleI18n,
+      excerptI18n: data.excerptI18n,
+      bodyI18n: data.bodyI18n,
+      coverUrl: data.coverUrl ?? null,
+      coverAlt: data.coverAlt ?? null,
+      tags: data.tags,
+      publishedAt,
+      authorId: session.user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await store.insert<BlogPost>(TABLES.blogPosts, created);
     await logAudit({
       actorId: session.user.id,
       actorEmail: session.user.email ?? null,
@@ -108,8 +107,8 @@ export async function upsertPostAction(fd: FormData) {
 export async function deletePostAction(fd: FormData) {
   const session = await requireAdmin();
   const id = z.string().uuid().parse(fd.get("id"));
-  const [before] = await db.select().from(schema.blogPosts).where(eq(schema.blogPosts.id, id));
-  await db.delete(schema.blogPosts).where(eq(schema.blogPosts.id, id));
+  const before = await store.findOne<BlogPost>(TABLES.blogPosts, (p) => p.id === id);
+  await store.deleteWhere<BlogPost>(TABLES.blogPosts, (p) => p.id === id);
   await logAudit({
     actorId: session.user.id,
     actorEmail: session.user.email ?? null,

@@ -1,16 +1,13 @@
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Product, type ProductVariant } from "@/lib/models";
 import { ProductForm } from "@/components/admin/ProductForm";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [product] = await db.select().from(schema.products).where(eq(schema.products.id, id));
+  const product = await store.findOne<Product>(TABLES.products, (p) => p.id === id);
   if (!product) notFound();
-  const variants = await db
-    .select()
-    .from(schema.productVariants)
-    .where(eq(schema.productVariants.productId, id));
+  const variants = await store.findMany<ProductVariant>(TABLES.variants, (v) => v.productId === id);
 
   return (
     <div className="max-w-3xl">

@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type BlogPost } from "@/lib/models";
 import { Button } from "@/components/ui/button";
 
 export default async function AdminBlogPage() {
-  const posts = await db
-    .select()
-    .from(schema.blogPosts)
-    .orderBy(desc(schema.blogPosts.updatedAt));
+  const all = await store.all<BlogPost>(TABLES.blogPosts);
+  const posts = all.sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -32,7 +32,7 @@ export default async function AdminBlogPage() {
                 <td className="px-4 py-3">{p.titleI18n.en}</td>
                 <td className="px-4 py-3 font-mono text-xs">{p.slug}</td>
                 <td className="px-4 py-3 text-neutral-500">
-                  {p.publishedAt ? p.publishedAt.toLocaleDateString() : "—"}
+                  {p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : "—"}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link href={`/admin/blog/${p.id}`} className="text-xs underline">Edit</Link>

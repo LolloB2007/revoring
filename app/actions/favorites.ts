@@ -1,10 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
-import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { store } from "@/lib/store";
+import { TABLES, type Favorite } from "@/lib/models";
+import { auth } from "@/lib/auth";
 
 const ProductId = z.string().uuid();
 
@@ -14,29 +14,25 @@ export async function toggleFavoriteAction(formData: FormData) {
   const parsed = ProductId.safeParse(formData.get("productId"));
   if (!parsed.success) return { ok: false, reason: "invalid" };
   const productId = parsed.data;
+  const userId = session.user.id;
 
-  const [existing] = await db
-    .select()
-    .from(schema.favorites)
-    .where(
-      and(
-        eq(schema.favorites.userId, session.user.id),
-        eq(schema.favorites.productId, productId),
-      ),
-    );
+  const existing = await store.findOne<Favorite>(
+    TABLES.favorites,
+    (f) => f.userId === userId && f.productId === productId,
+  );
   if (existing) {
-    await db
-      .delete(schema.favorites)
-      .where(
-        and(
-          eq(schema.favorites.userId, session.user.id),
-          eq(schema.favorites.productId, productId),
-        ),
-      );
+    await store.deleteWhere<Favorite>(
+      TABLES.favorites,
+      (f) => f.userId === userId && f.productId === productId,
+    );
     revalidatePath("/[locale]/account/favorites", "page");
     return { ok: true, favorited: false };
   }
-  await db.insert(schema.favorites).values({ userId: session.user.id, productId });
+  await store.insert<Favorite>(TABLES.favorites, {
+    userId,
+    productId,
+    createdAt: new Date(),
+  });
   revalidatePath("/[locale]/account/favorites", "page");
   return { ok: true, favorited: true };
 }

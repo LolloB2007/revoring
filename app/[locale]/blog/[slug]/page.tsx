@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { setRequestLocale } from "next-intl/server";
-import { eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type BlogPost } from "@/lib/models";
 import { buildMetadata } from "@/lib/seo";
 import { env } from "@/lib/env";
 import type { Locale } from "@/i18n";
@@ -16,10 +16,7 @@ interface RouteParams {
 
 export async function generateMetadata({ params }: { params: Promise<RouteParams> }) {
   const { locale, slug } = await params;
-  const [post] = await db
-    .select()
-    .from(schema.blogPosts)
-    .where(eq(schema.blogPosts.slug, slug));
+  const post = await store.findOne<BlogPost>(TABLES.blogPosts, (p) => p.slug === slug);
   if (!post) return {};
   const title = post.titleI18n[locale as "it" | "en"] ?? post.titleI18n.en;
   const description = post.excerptI18n[locale as "it" | "en"] ?? post.excerptI18n.en;
@@ -29,7 +26,10 @@ export async function generateMetadata({ params }: { params: Promise<RouteParams
     title,
     description,
     ogImage: post.coverUrl ?? undefined,
-    article: { publishedAt: post.publishedAt?.toISOString(), author: "Revoring" },
+    article: {
+      publishedAt: post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined,
+      author: "Revoring",
+    },
   });
 }
 
@@ -37,18 +37,19 @@ export default async function BlogPostPage({ params }: { params: Promise<RoutePa
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const [post] = await db.select().from(schema.blogPosts).where(eq(schema.blogPosts.slug, slug));
+  const post = await store.findOne<BlogPost>(TABLES.blogPosts, (p) => p.slug === slug);
   if (!post || !post.publishedAt) notFound();
 
   const title = post.titleI18n[locale as "it" | "en"] ?? post.titleI18n.en;
   const html = post.bodyI18n[locale as "it" | "en"] ?? post.bodyI18n.en;
+  const published = new Date(post.publishedAt);
 
   const articleLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: title,
     image: post.coverUrl ? [post.coverUrl] : undefined,
-    datePublished: post.publishedAt.toISOString(),
+    datePublished: published.toISOString(),
     author: { "@type": "Organization", name: "Revoring" },
     publisher: { "@type": "Organization", name: "Revoring" },
     mainEntityOfPage: `${env.NEXT_PUBLIC_SITE_URL}/${locale}/blog/${slug}`,
@@ -71,7 +72,7 @@ export default async function BlogPostPage({ params }: { params: Promise<RoutePa
       )}
       <h1 className="text-5xl font-semibold tracking-tight">{title}</h1>
       <p className="mt-4 text-sm text-neutral-500">
-        {post.publishedAt.toLocaleDateString(locale === "it" ? "it-IT" : "en-US", {
+        {published.toLocaleDateString(locale === "it" ? "it-IT" : "en-US", {
           year: "numeric",
           month: "long",
           day: "numeric",

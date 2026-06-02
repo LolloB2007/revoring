@@ -1,13 +1,12 @@
-import { desc } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Order } from "@/lib/models";
 import { formatPrice } from "@/lib/utils";
 
 export default async function AdminOrdersPage() {
-  const orders = await db
-    .select()
-    .from(schema.orders)
-    .orderBy(desc(schema.orders.createdAt))
-    .limit(200);
+  const all = await store.all<Order>(TABLES.orders);
+  const orders = all
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 200);
   return (
     <div>
       <h1 className="text-3xl font-semibold tracking-tight">Orders</h1>
@@ -29,7 +28,9 @@ export default async function AdminOrdersPage() {
                 <td className="px-4 py-3">{o.email}</td>
                 <td className="px-4 py-3">{formatPrice(o.totalCents, o.currency)}</td>
                 <td className="px-4 py-3">{o.status}</td>
-                <td className="px-4 py-3 text-neutral-500">{o.createdAt.toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-neutral-500">
+                  {new Date(o.createdAt).toLocaleDateString()}
+                </td>
               </tr>
             ))}
             {orders.length === 0 && (

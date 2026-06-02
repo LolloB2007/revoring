@@ -1,14 +1,13 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Product, type ProductVariant, type Favorite } from "@/lib/models";
 import { buildMetadata } from "@/lib/seo";
 import { formatPrice } from "@/lib/utils";
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { FavoriteButton } from "@/components/shop/FavoriteButton";
 import { auth } from "@/lib/auth";
-import { and } from "drizzle-orm";
 import type { Locale } from "@/i18n";
 import { env } from "@/lib/env";
 
@@ -21,7 +20,7 @@ export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: Promise<RouteParams> }) {
   const { locale, slug } = await params;
-  const product = await loadProduct(slug);
+  const product = await store.findOne<Product>(TABLES.products, (p) => p.slug === slug);
   if (!product) return {};
   const name = product.nameI18n[locale as "it" | "en"] ?? product.nameI18n.en;
   const desc = product.descriptionI18n[locale as "it" | "en"] ?? product.descriptionI18n.en;
@@ -38,26 +37,21 @@ export default async function ProductPage({ params }: { params: Promise<RoutePar
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const product = await loadProduct(slug);
+  const product = await store.findOne<Product>(TABLES.products, (p) => p.slug === slug);
   if (!product) notFound();
 
-  const variants = await db
-    .select()
-    .from(schema.productVariants)
-    .where(eq(schema.productVariants.productId, product.id));
+  const variants = await store.findMany<ProductVariant>(
+    TABLES.variants,
+    (v) => v.productId === product.id,
+  );
 
   const session = await auth();
   let favorited = false;
   if (session?.user?.id) {
-    const [f] = await db
-      .select()
-      .from(schema.favorites)
-      .where(
-        and(
-          eq(schema.favorites.userId, session.user.id),
-          eq(schema.favorites.productId, product.id),
-        ),
-      );
+    const f = await store.findOne<Favorite>(
+      TABLES.favorites,
+      (x) => x.userId === session.user.id && x.productId === product.id,
+    );
     favorited = !!f;
   }
 
@@ -102,9 +96,7 @@ export default async function ProductPage({ params }: { params: Promise<RoutePar
           <p className="mt-4 text-2xl">
             {formatPrice(product.priceCents, product.currency, locale === "it" ? "it-IT" : "en-US")}
           </p>
-          <p className="mt-6 text-neutral-700 leading-relaxed whitespace-pre-line">
-            {description}
-          </p>
+          <p className="mt-6 text-neutral-700 leading-relaxed whitespace-pre-line">{description}</p>
           <div className="mt-10 flex gap-3 flex-wrap">
             {defaultVariant && (
               <AddToCartButton variantId={defaultVariant.id} disabled={defaultVariant.stock <= 0} />
@@ -120,16 +112,4 @@ export default async function ProductPage({ params }: { params: Promise<RoutePar
       </div>
     </section>
   );
-}
-
-async function loadProduct(slug: string) {
-  try {
-    const [row] = await db
-      .select()
-      .from(schema.products)
-      .where(eq(schema.products.slug, slug));
-    return row ?? null;
-  } catch {
-    return null;
-  }
 }

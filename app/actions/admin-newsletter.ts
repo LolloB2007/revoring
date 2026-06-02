@@ -1,9 +1,9 @@
 "use server";
 
 import { z } from "zod";
-import { isNotNull } from "drizzle-orm";
 import { headers } from "next/headers";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type NewsletterSubscriber } from "@/lib/models";
 import { requireAdmin } from "@/lib/admin-guard";
 import { sendBatch } from "@/lib/email";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -26,13 +26,10 @@ export async function sendBroadcastAction(fd: FormData): Promise<{ sent: number;
     body_en: sanitizeHtml(String(fd.get("body_en") ?? "")),
   });
 
-  const subs = await db
-    .select({
-      email: schema.newsletterSubscribers.email,
-      locale: schema.newsletterSubscribers.locale,
-    })
-    .from(schema.newsletterSubscribers)
-    .where(isNotNull(schema.newsletterSubscribers.confirmedAt));
+  const subs = await store.findMany<NewsletterSubscriber>(
+    TABLES.newsletterSubscribers,
+    (s) => !!s.confirmedAt && !s.unsubscribedAt,
+  );
 
   const messages = subs.map((s) => {
     const isIt = s.locale === "it";

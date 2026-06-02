@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type BlogPost } from "@/lib/models";
 import { BlogForm } from "@/components/admin/BlogForm";
 
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [post] = await db.select().from(schema.blogPosts).where(eq(schema.blogPosts.id, id));
+  const post = await store.findOne<BlogPost>(TABLES.blogPosts, (p) => p.id === id);
   if (!post) notFound();
   return (
     <div className="max-w-4xl">

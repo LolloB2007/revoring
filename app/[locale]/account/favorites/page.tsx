@@ -2,8 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { eq, desc } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Favorite, type Product } from "@/lib/models";
 import { auth } from "@/lib/auth";
 
 export default async function FavoritesPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -12,17 +12,14 @@ export default async function FavoritesPage({ params }: { params: Promise<{ loca
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/account/signin`);
 
-  const rows = await db
-    .select({
-      productId: schema.products.id,
-      slug: schema.products.slug,
-      nameI18n: schema.products.nameI18n,
-      images: schema.products.images,
-    })
-    .from(schema.favorites)
-    .innerJoin(schema.products, eq(schema.favorites.productId, schema.products.id))
-    .where(eq(schema.favorites.userId, session.user.id))
-    .orderBy(desc(schema.favorites.createdAt));
+  const favs = await store.findMany<Favorite>(
+    TABLES.favorites,
+    (f) => f.userId === session.user.id,
+  );
+  const products = await store.all<Product>(TABLES.products);
+  const rows = favs
+    .map((f) => products.find((p) => p.id === f.productId))
+    .filter((p): p is Product => Boolean(p));
 
   return (
     <section className="container-x py-16 max-w-5xl">
@@ -36,10 +33,16 @@ export default async function FavoritesPage({ params }: { params: Promise<{ loca
       ) : (
         <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((p) => (
-            <Link key={p.productId} href={`/${locale}/catalogue/${p.slug}`} className="block">
+            <Link key={p.id} href={`/${locale}/catalogue/${p.slug}`} className="block">
               <div className="aspect-square bg-neutral-100 rounded-lg overflow-hidden relative">
                 {p.images[0]?.url && (
-                  <Image src={p.images[0].url} alt={p.images[0].alt} fill sizes="33vw" className="object-cover" />
+                  <Image
+                    src={p.images[0].url}
+                    alt={p.images[0].alt}
+                    fill
+                    sizes="33vw"
+                    className="object-cover"
+                  />
                 )}
               </div>
               <p className="mt-2 font-medium">

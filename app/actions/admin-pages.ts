@@ -1,10 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { db, schema } from "@/lib/db";
+import { store } from "@/lib/store";
+import { TABLES, type Page } from "@/lib/models";
 import { requireAdmin } from "@/lib/admin-guard";
 import { logAudit } from "@/lib/audit";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -23,14 +23,17 @@ export async function savePageAction(fd: FormData) {
     body_it: sanitizeHtml(String(fd.get("body_it") ?? "")),
   });
 
-  const [before] = await db.select().from(schema.pages).where(eq(schema.pages.key, parsed.key));
-  await db
-    .insert(schema.pages)
-    .values({ key: parsed.key, bodyI18n: { en: parsed.body_en, it: parsed.body_it } })
-    .onConflictDoUpdate({
-      target: schema.pages.key,
-      set: { bodyI18n: { en: parsed.body_en, it: parsed.body_it }, updatedAt: new Date() },
-    });
+  const before = await store.findOne<Page>(TABLES.pages, (p) => p.key === parsed.key);
+  await store.upsert<Page>(
+    TABLES.pages,
+    (p) => p.key === parsed.key,
+    () => ({
+      key: parsed.key,
+      bodyI18n: { en: parsed.body_en, it: parsed.body_it },
+      updatedAt: new Date(),
+    }),
+    { bodyI18n: { en: parsed.body_en, it: parsed.body_it }, updatedAt: new Date() },
+  );
 
   await logAudit({
     actorId: session.user.id,
@@ -39,7 +42,7 @@ export async function savePageAction(fd: FormData) {
     entityType: "page",
     entityId: parsed.key,
     before,
-    after: { key: parsed.key, body_en: parsed.body_en.slice(0, 200), body_it: parsed.body_it.slice(0, 200) },
+    after: { key: parsed.key, body_en_excerpt: parsed.body_en.slice(0, 200), body_it_excerpt: parsed.body_it.slice(0, 200) },
     headers: await headers(),
   });
 

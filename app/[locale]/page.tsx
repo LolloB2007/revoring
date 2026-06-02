@@ -1,6 +1,11 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Hero } from "@/components/hero/Hero";
 import { ValueProps } from "@/components/site/ValueProps";
+import { FeaturedProducts } from "@/components/site/FeaturedProducts";
+import { SocialProof } from "@/components/site/SocialProof";
+import { AcademyBanner } from "@/components/site/AcademyBanner";
+import { Testimonial } from "@/components/site/Testimonial";
+import { CtaBanner } from "@/components/site/CtaBanner";
 import { buildMetadata } from "@/lib/seo";
 import type { Locale } from "@/i18n";
 
@@ -22,6 +27,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     <>
       <Hero />
       <ValueProps />
+      <SocialProof />
+      <FeaturedProducts />
+      <Testimonial />
+      <AcademyBanner />
+      <CtaBanner />
     </>
   );
 }
