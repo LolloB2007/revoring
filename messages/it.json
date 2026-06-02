@@ -1,0 +1,79 @@
+{
+  "common": {
+    "siteName": "Revoring",
+    "tagline": "Allenamento funzionale ad anelli elastici",
+    "shopNow": "Acquista ora",
+    "learnMore": "Scopri di più",
+    "loading": "Caricamento…",
+    "error": "Si è verificato un errore"
+  },
+  "nav": {
+    "home": "Home",
+    "catalogue": "Catalogo",
+    "about": "Chi siamo",
+    "blog": "Blog",
+    "contacts": "Contatti",
+    "account": "Account",
+    "cart": "Carrello",
+    "signIn": "Accedi",
+    "signOut": "Esci"
+  },
+  "footer": {
+    "rights": "Tutti i diritti riservati.",
+    "privacy": "Privacy",
+    "cookies": "Cookie",
+    "terms": "Termini di vendita",
+    "newsletter": "Iscriviti alla newsletter",
+    "newsletterCta": "Iscriviti",
+    "newsletterPlaceholder": "La tua email"
+  },
+  "home": {
+    "heroEyebrow": "ONE INFINITE TRAINING",
+    "heroTitle": "Un solo attrezzo. Allenamenti infiniti.",
+    "heroSubtitle": "Il sistema elastico modulare scelto da atleti, palestre e professionisti.",
+    "heroCtaPrimary": "Scopri il catalogo",
+    "heroCtaSecondary": "L'Academy",
+    "valueProps": {
+      "modular": {
+        "title": "Modulare",
+        "body": "Combina anelli e resistenze per oltre 300 esercizi."
+      },
+      "portable": {
+        "title": "Portatile",
+        "body": "Pesa meno di un kg, sta in una borsa."
+      },
+      "certified": {
+        "title": "Certificato",
+        "body": "Materiali testati, Academy con corsi accreditati."
+      }
+    }
+  },
+  "cookies": {
+    "title": "Rispettiamo la tua privacy",
+    "description": "Usiamo cookie necessari per il funzionamento del sito e, solo con il tuo consenso, cookie di analisi per migliorare l'esperienza.",
+    "necessary": "Necessari",
+    "necessaryDesc": "Sempre attivi. Indispensabili per autenticazione e carrello.",
+    "analytics": "Analisi",
+    "analyticsDesc": "Ci aiutano a capire come viene usato il sito.",
+    "marketing": "Marketing",
+    "marketingDesc": "Per personalizzare comunicazioni promozionali.",
+    "acceptAll": "Accetta tutto",
+    "rejectAll": "Rifiuta tutto",
+    "save": "Salva preferenze",
+    "manage": "Gestisci cookie"
+  },
+  "newsletter": {
+    "checkInbox": "Controlla la tua email per confermare l'iscrizione.",
+    "alreadySubscribed": "Sei già iscritto.",
+    "invalidEmail": "Email non valida.",
+    "rateLimited": "Troppi tentativi. Riprova più tardi."
+  },
+  "contacts": {
+    "title": "Contatti",
+    "name": "Nome",
+    "email": "Email",
+    "message": "Messaggio",
+    "send": "Invia",
+    "thanks": "Grazie, ti risponderemo al più presto."
+  }
+}

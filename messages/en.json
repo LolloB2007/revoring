@@ -1,0 +1,79 @@
+{
+  "common": {
+    "siteName": "Revoring",
+    "tagline": "Functional elastic-ring training",
+    "shopNow": "Shop now",
+    "learnMore": "Learn more",
+    "loading": "Loading…",
+    "error": "Something went wrong"
+  },
+  "nav": {
+    "home": "Home",
+    "catalogue": "Catalogue",
+    "about": "About",
+    "blog": "Blog",
+    "contacts": "Contact",
+    "account": "Account",
+    "cart": "Cart",
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  },
+  "footer": {
+    "rights": "All rights reserved.",
+    "privacy": "Privacy",
+    "cookies": "Cookies",
+    "terms": "Terms of sale",
+    "newsletter": "Join the newsletter",
+    "newsletterCta": "Subscribe",
+    "newsletterPlaceholder": "Your email"
+  },
+  "home": {
+    "heroEyebrow": "ONE INFINITE TRAINING",
+    "heroTitle": "One tool. Infinite workouts.",
+    "heroSubtitle": "The modular elastic system trusted by athletes, gyms, and professionals.",
+    "heroCtaPrimary": "Explore catalogue",
+    "heroCtaSecondary": "The Academy",
+    "valueProps": {
+      "modular": {
+        "title": "Modular",
+        "body": "Combine rings and resistances for 300+ exercises."
+      },
+      "portable": {
+        "title": "Portable",
+        "body": "Under one kilogram. Fits in any bag."
+      },
+      "certified": {
+        "title": "Certified",
+        "body": "Tested materials, accredited Academy courses."
+      }
+    }
+  },
+  "cookies": {
+    "title": "We respect your privacy",
+    "description": "We use necessary cookies to run the site and, only with your consent, analytics cookies to improve it.",
+    "necessary": "Necessary",
+    "necessaryDesc": "Always on. Required for auth and cart.",
+    "analytics": "Analytics",
+    "analyticsDesc": "Help us understand how the site is used.",
+    "marketing": "Marketing",
+    "marketingDesc": "For personalized promotional communications.",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all",
+    "save": "Save preferences",
+    "manage": "Manage cookies"
+  },
+  "newsletter": {
+    "checkInbox": "Check your inbox to confirm your subscription.",
+    "alreadySubscribed": "You are already subscribed.",
+    "invalidEmail": "Invalid email.",
+    "rateLimited": "Too many attempts. Try again later."
+  },
+  "contacts": {
+    "title": "Contact",
+    "name": "Name",
+    "email": "Email",
+    "message": "Message",
+    "send": "Send",
+    "thanks": "Thanks — we'll get back to you soon."
+  }
+}
