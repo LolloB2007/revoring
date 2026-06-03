@@ -1,0 +1,62 @@
+[
+  {
+    "id": "22222222-2222-4222-8222-222222222221",
+    "slug": "revoring-lite",
+    "nameI18n": { "it": "Revoring Lite", "en": "Revoring Lite" },
+    "descriptionI18n": {
+      "it": "La versione più leggera della catena Revoring: 14 anelli elastici a bassa resistenza per stretching, pilates, lavoro analitico, riabilitazione e mobilità. L'ideale per iniziare o per integrare i workout di precisione.",
+      "en": "The lightest version of the Revoring chain: 14 low-resistance elastic rings for stretching, pilates, analytical work, rehab and mobility. Perfect to start with or to complement precision workouts."
+    },
+    "priceCents": 14500,
+    "currency": "EUR",
+    "images": [
+      { "url": "/brand/product-lite.jpg", "alt": "Revoring Lite" }
+    ],
+    "categoryId": "11111111-1111-4111-8111-111111111111",
+    "stock": 50,
+    "isActive": true,
+    "weightGrams": 600,
+    "createdAt": "2026-06-02T08:00:00.000Z",
+    "updatedAt": "2026-06-02T08:00:00.000Z"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222222",
+    "slug": "revoring-medium",
+    "nameI18n": { "it": "Revoring Medium", "en": "Revoring Medium" },
+    "descriptionI18n": {
+      "it": "La configurazione più versatile: catena di 14 anelli elastici a resistenza media, adatta a tutte le età e tutti i livelli. Suspension, circuit, personal, gruppo, postura, riabilitazione e preparazione atletica con un unico attrezzo.",
+      "en": "The most versatile setup: 14 medium-resistance elastic rings for all ages and levels. Suspension, circuit, personal, group, postural, rehab and athletic prep — all with one tool."
+    },
+    "priceCents": 16900,
+    "currency": "EUR",
+    "images": [
+      { "url": "/brand/product-medium.jpg", "alt": "Revoring Medium" }
+    ],
+    "categoryId": "11111111-1111-4111-8111-111111111111",
+    "stock": 80,
+    "isActive": true,
+    "weightGrams": 800,
+    "createdAt": "2026-06-02T08:00:00.000Z",
+    "updatedAt": "2026-06-02T08:00:00.000Z"
+  },
+  {
+    "id": "22222222-2222-4222-8222-222222222223",
+    "slug": "revoring-strong",
+    "nameI18n": { "it": "Revoring Strong", "en": "Revoring Strong" },
+    "descriptionI18n": {
+      "it": "La versione ad alta intensità: catena di 14 anelli elastici a resistenza forte, pensata per allenamento in sospensione, forza esplosiva e atleti avanzati. Lo strumento di chi cerca il massimo carico funzionale.",
+      "en": "The high-intensity version: 14 strong-resistance elastic rings designed for suspension training, explosive strength and advanced athletes. For anyone chasing maximum functional load."
+    },
+    "priceCents": 20500,
+    "currency": "EUR",
+    "images": [
+      { "url": "/brand/product-strong.jpg", "alt": "Revoring Strong" }
+    ],
+    "categoryId": "11111111-1111-4111-8111-111111111111",
+    "stock": 40,
+    "isActive": true,
+    "weightGrams": 1000,
+    "createdAt": "2026-06-02T08:00:00.000Z",
+    "updatedAt": "2026-06-02T08:00:00.000Z"
+  }
+]
