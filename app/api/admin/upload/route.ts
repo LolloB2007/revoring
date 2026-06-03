@@ -1,19 +1,22 @@
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
-import { BLOB_LIMITS, findBlobToken } from "@/lib/blob";
+import { BLOB_LIMITS, isAllowedContentType } from "@/lib/blob";
 
 /**
- * Vercel Blob client-upload bridge. Flow:
- *   1. Client calls @vercel/blob/client `upload()` → POSTs to this route
- *   2. We verify the admin session + clamp content-type and size
- *   3. We hand back a single-use token; the client streams the file directly
- *      to Blob storage (bypassing this function, so we're not limited by the
- *      4.5 MB body size on Hobby plan)
+ * Server-side Vercel Blob upload. Used because our Blob store is connected in
+ * OIDC mode (no long-lived read-write token), so the client-upload flow from
+ * @vercel/blob/client can't mint tokens. Instead, the browser POSTs the file
+ * here and we call put() — @vercel/blob detects OIDC at runtime and signs the
+ * upload using VERCEL_OIDC_TOKEN + BLOB_STORE_ID.
+ *
+ * Hobby plan has a 4.5 MB request-body cap. We enforce 10 MB in code but
+ * Vercel will return 413 before that, which is the right behavior anyway.
  */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
-  // 1. Admin gate — must run first so an unauthenticated request can't even
-  // probe the upload surface.
   try {
     await requireAdmin();
   } catch (e) {
@@ -21,45 +24,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // 2. Find a Blob read-write token — the connection-wizard env var name varies
-  // (BLOB_READ_WRITE_TOKEN, <store>_READ_WRITE_TOKEN, etc.). Surface a clear
-  // error if no token is reachable.
-  const token = findBlobToken();
-  if (!token) {
-    console.error(
-      "[upload] No vercel_blob_rw_ token in env. Connect a Blob store " +
-        "with read-write access to this project.",
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch (e) {
+    console.error("[upload] formData parse failed:", e);
+    return NextResponse.json({ error: "invalid-form" }, { status: 400 });
+  }
+
+  const file = form.get("file");
+  const prefix = String(form.get("prefix") ?? "uploads");
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: "missing-file" }, { status: 400 });
+  }
+  if (!isAllowedContentType(file.type)) {
+    return NextResponse.json(
+      { error: `unsupported-content-type: ${file.type}` },
+      { status: 400 },
     );
-    return NextResponse.json({ error: "blob-not-configured" }, { status: 500 });
+  }
+  if (file.size > BLOB_LIMITS.maximumSizeInBytes) {
+    return NextResponse.json({ error: "file-too-large" }, { status: 400 });
   }
 
-  let body: HandleUploadBody;
-  try {
-    body = (await req.json()) as HandleUploadBody;
-  } catch (e) {
-    console.error("[upload] body parse failed:", e);
-    return NextResponse.json({ error: "invalid-json" }, { status: 400 });
-  }
+  const safePrefix = ["products", "blog", "categories", "uploads"].includes(prefix)
+    ? prefix
+    : "uploads";
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
 
   try {
-    const json = await handleUpload({
-      body,
-      request: req,
-      token,
-      onBeforeGenerateToken: async () => ({
-        allowedContentTypes: [...BLOB_LIMITS.allowedContentTypes],
-        maximumSizeInBytes: BLOB_LIMITS.maximumSizeInBytes,
-        addRandomSuffix: true,
-      }),
-      onUploadCompleted: async () => {
-        // Hook for audit / cleanup; intentionally empty for now.
-      },
+    const blob = await put(`${safePrefix}/${safeName}`, file, {
+      access: "public",
+      contentType: file.type,
+      addRandomSuffix: true,
     });
-    return NextResponse.json(json);
+    return NextResponse.json({ url: blob.url, pathname: blob.pathname });
   } catch (e) {
-    // Loud log so the real cause shows up in Vercel runtime logs.
-    console.error("[upload] handleUpload threw:", e);
-    const msg = (e as Error).message ?? "upload-failed";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    console.error("[upload] put threw:", e);
+    return NextResponse.json(
+      { error: (e as Error).message ?? "upload-failed" },
+      { status: 500 },
+    );
   }
 }

@@ -42,13 +42,16 @@ export function ProductForm({ initial }: { initial?: Initial }) {
   async function upload(file: File) {
     setUploading(true);
     try {
-      const { upload: blobUpload } = await import("@vercel/blob/client");
-      const blob = await blobUpload(`products/${file.name}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload",
-        contentType: file.type,
-      });
-      setImages((cur) => [...cur, { url: blob.url, alt: file.name }]);
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("prefix", "products");
+      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      const { url } = await res.json();
+      setImages((cur) => [...cur, { url, alt: file.name }]);
     } catch (e) {
       alert("Upload fallito: " + ((e as Error).message ?? "errore sconosciuto"));
     } finally {

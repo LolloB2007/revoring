@@ -37,13 +37,16 @@ export function BlogForm({ initial }: { initial?: Initial }) {
 
   async function uploadCover(file: File) {
     try {
-      const { upload: blobUpload } = await import("@vercel/blob/client");
-      const blob = await blobUpload(`blog/${file.name}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload",
-        contentType: file.type,
-      });
-      setCoverUrl(blob.url);
+      const fd = new FormData();
+      fd.set("file", file);
+      fd.set("prefix", "blog");
+      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      const { url } = await res.json();
+      setCoverUrl(url);
     } catch (e) {
       alert("Upload fallito: " + ((e as Error).message ?? "errore sconosciuto"));
     }
