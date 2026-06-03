@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
-import { BLOB_LIMITS } from "@/lib/blob";
+import { BLOB_LIMITS, findBlobToken } from "@/lib/blob";
 
 /**
  * Vercel Blob client-upload bridge. Flow:
@@ -21,14 +21,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // 2. Vercel must have injected the Blob token. If it didn't, the @vercel/blob
-  // call below produces a cryptic error; surface it loudly instead.
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    console.error("[upload] BLOB_READ_WRITE_TOKEN not set in env");
-    return NextResponse.json(
-      { error: "blob-not-configured" },
-      { status: 500 },
+  // 2. Find a Blob read-write token — the connection-wizard env var name varies
+  // (BLOB_READ_WRITE_TOKEN, <store>_READ_WRITE_TOKEN, etc.). Surface a clear
+  // error if no token is reachable.
+  const token = findBlobToken();
+  if (!token) {
+    console.error(
+      "[upload] No vercel_blob_rw_ token in env. Connect a Blob store " +
+        "with read-write access to this project.",
     );
+    return NextResponse.json({ error: "blob-not-configured" }, { status: 500 });
   }
 
   let body: HandleUploadBody;
@@ -43,6 +45,7 @@ export async function POST(req: NextRequest) {
     const json = await handleUpload({
       body,
       request: req,
+      token,
       onBeforeGenerateToken: async () => ({
         allowedContentTypes: [...BLOB_LIMITS.allowedContentTypes],
         maximumSizeInBytes: BLOB_LIMITS.maximumSizeInBytes,
