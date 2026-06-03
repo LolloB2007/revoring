@@ -35,12 +35,16 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    // Only register the R2 remote pattern when the hostname env var is a
-    // non-empty string; picomatch (used by Next's image config validator)
-    // throws "Expected a non-empty string" on an empty hostname.
+    // Allow Vercel Blob (primary image host) and an optional R2 host.
+    // picomatch (used by Next's image config validator) throws "Expected a
+    // non-empty string" on an empty hostname, so we filter empties.
     remotePatterns: (() => {
-      const host = (process.env.REVORING_R2_PUBLIC_HOST ?? "").trim();
-      return host ? [{ protocol: "https" as const, hostname: host }] : [];
+      const patterns: Array<{ protocol: "https"; hostname: string }> = [
+        { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      ];
+      const r2 = (process.env.REVORING_R2_PUBLIC_HOST ?? "").trim();
+      if (r2) patterns.push({ protocol: "https", hostname: r2 });
+      return patterns;
     })(),
     formats: ["image/avif", "image/webp"],
   },

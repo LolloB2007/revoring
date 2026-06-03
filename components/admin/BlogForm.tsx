@@ -36,16 +36,17 @@ export function BlogForm({ initial }: { initial?: Initial }) {
   const [coverUrl, setCoverUrl] = useState<string | null>(v.coverUrl);
 
   async function uploadCover(file: File) {
-    const presign = await fetch("/api/admin/upload", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ contentType: file.type, byteSize: file.size, prefix: "blog" }),
-    });
-    if (!presign.ok) return alert("Upload failed");
-    const { url, publicUrl } = await presign.json();
-    const put = await fetch(url, { method: "PUT", headers: { "content-type": file.type }, body: file });
-    if (!put.ok) return alert("Upload failed");
-    setCoverUrl(publicUrl);
+    try {
+      const { upload: blobUpload } = await import("@vercel/blob/client");
+      const blob = await blobUpload(`blog/${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload",
+        contentType: file.type,
+      });
+      setCoverUrl(blob.url);
+    } catch (e) {
+      alert("Upload fallito: " + ((e as Error).message ?? "errore sconosciuto"));
+    }
   }
 
   return (

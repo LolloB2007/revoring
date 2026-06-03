@@ -38,20 +38,17 @@ export function ProductForm({ initial }: { initial?: Initial }) {
   const [images, setImages] = useState<Array<{ url: string; alt: string }>>(v.images ?? []);
 
   async function upload(file: File) {
-    const presign = await fetch("/api/admin/upload", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const { upload: blobUpload } = await import("@vercel/blob/client");
+      const blob = await blobUpload(`products/${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload",
         contentType: file.type,
-        byteSize: file.size,
-        prefix: "products",
-      }),
-    });
-    if (!presign.ok) return alert("Upload fallito");
-    const { url, publicUrl } = await presign.json();
-    const put = await fetch(url, { method: "PUT", headers: { "content-type": file.type }, body: file });
-    if (!put.ok) return alert("Upload fallito");
-    setImages((cur) => [...cur, { url: publicUrl, alt: file.name }]);
+      });
+      setImages((cur) => [...cur, { url: blob.url, alt: file.name }]);
+    } catch (e) {
+      alert("Upload fallito: " + ((e as Error).message ?? "errore sconosciuto"));
+    }
   }
 
   return (

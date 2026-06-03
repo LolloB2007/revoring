@@ -122,22 +122,19 @@ In Stripe Dashboard (https://dashboard.stripe.com):
 
 ---
 
-## 5 · Wire up Cloudflare R2 (image uploads — optional)
+## 5 · Wire up Vercel Blob (admin image uploads)
 
-If the admin needs to upload new product / blog images from the browser, you need R2. Otherwise skip this — the seeded products use `/brand/product-*.jpg` images already shipped in the repo.
+If the admin needs to upload new product / blog images from the browser, provision Vercel Blob. (Skip and admin still works — the seeded products use the bundled `/brand/product-*.jpg` images.)
 
-In Cloudflare Dashboard:
+1. Vercel project → **Storage** tab → **Create Database** → **Vercel Blob**
+2. Plan: **Hobby** (free, 1 GB)
+3. **Connect to project** → tick Production + Preview + Development
 
-1. **R2** → Create bucket: `revoring-media`
-2. Bucket → **Settings** → **Public access** → enable, copy the `pub-….r2.dev` URL
-3. **R2 → API tokens** → Create API token → R2 read+write
-4. Add to Vercel env:
-   - `R2_ACCOUNT_ID` = your Cloudflare account ID
-   - `R2_ACCESS_KEY_ID` = generated access key
-   - `R2_SECRET_ACCESS_KEY` = generated secret
-   - `R2_BUCKET` = `revoring-media`
-   - `R2_PUBLIC_HOST` = `pub-xxxx.r2.dev` (no `https://` prefix)
-   - `REVORING_R2_PUBLIC_HOST` = same value (used by `next.config.ts` to allow the domain in `next/image`)
+That's it. Vercel auto-injects `BLOB_READ_WRITE_TOKEN`. The browser uploads directly to Blob using the `@vercel/blob/client` SDK; our API route just mints a one-shot upload token after verifying the admin session, so we don't burn function bandwidth.
+
+**No `next.config.ts` change needed** — `*.public.blob.vercel-storage.com` is already in the allowed image hosts.
+
+R2 setup is still in `.env.example` as an optional fallback for self-hosted deployments — leave the R2 vars blank on Vercel.
 
 ---
 
