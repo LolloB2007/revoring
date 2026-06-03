@@ -1,29 +1,39 @@
-import createDOMPurify from "isomorphic-dompurify";
-
-const purify = createDOMPurify;
+import sanitizeHtmlLib from "sanitize-html";
 
 /**
- * Sanitise rich-text HTML produced by the TipTap editor. Allowed tags cover
- * basic formatting + images (whose URLs we control via R2) and external links
- * (forced to noopener noreferrer).
+ * Sanitise rich-text HTML coming out of the TipTap editor or pasted into the
+ * admin pages editor. Pure JS — no jsdom dependency — so it bundles cleanly
+ * on every runtime (Vercel Node, Edge, local dev).
+ *
+ * Allowed tags cover basic formatting + images (whose src we host) and links
+ * (forced to noopener / noreferrer / target=_blank).
  */
 const ALLOWED_TAGS = [
   "p", "br", "strong", "em", "u", "s", "blockquote", "code", "pre",
-  "ul", "ol", "li", "a", "h1", "h2", "h3", "h4", "img", "figure", "figcaption",
+  "ul", "ol", "li", "a", "h1", "h2", "h3", "h4",
+  "img", "figure", "figcaption",
 ];
-const ALLOWED_ATTR = ["href", "src", "alt", "title", "rel", "target", "class"];
 
 export function sanitizeHtml(dirty: string): string {
-  const clean = purify.sanitize(dirty, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    ALLOW_DATA_ATTR: false,
-    FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "input"],
-    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+  return sanitizeHtmlLib(dirty, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: {
+      a: ["href", "title", "rel", "target", "class"],
+      img: ["src", "alt", "title", "width", "height", "class"],
+      "*": ["class"],
+    },
+    allowedSchemes: ["http", "https", "mailto"],
+    allowedSchemesByTag: { img: ["http", "https", "data"] },
+    transformTags: {
+      a: (tagName, attribs) => ({
+        tagName,
+        attribs: {
+          ...attribs,
+          rel: "noopener noreferrer",
+          target: "_blank",
+        },
+      }),
+    },
+    disallowedTagsMode: "discard",
   });
-  // Force link safety
-  return clean.replace(
-    /<a\s+([^>]*?)href="(https?:\/\/[^"]+)"([^>]*)>/gi,
-    (_m, pre, href, post) => `<a ${pre}href="${href}" rel="noopener noreferrer" target="_blank"${post}>`,
-  );
 }

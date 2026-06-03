@@ -29,15 +29,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
-  // jsdom (pulled in by isomorphic-dompurify for server-side sanitization) has
-  // a transitive CJS/ESM mismatch that Turbopack can't bundle. Marking these
-  // packages external makes Next require them at runtime from node_modules,
-  // sidestepping the bundler entirely.
+  // Native Node addons that must be required from node_modules at runtime
+  // rather than bundled by Turbopack.
   serverExternalPackages: [
-    "isomorphic-dompurify",
-    "jsdom",
-    "html-encoding-sniffer",
-    "@exodus/bytes",
+    "@node-rs/argon2",
   ],
   experimental: {
     serverActions: {
