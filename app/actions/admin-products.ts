@@ -16,7 +16,7 @@ const Image = z.object({ url: z.string().url(), alt: z.string().min(1).max(300) 
 
 const ProductInput = z.object({
   id: z.string().uuid().optional(),
-  slug: z.string().regex(/^[a-z0-9-]+$/).min(2).max(80),
+  slug: z.string().regex(/^[a-z0-9-]+$/, "Slug deve contenere solo a-z, 0-9 e trattini").min(2).max(80),
   nameI18n: I18n,
   descriptionI18n: I18nLong,
   priceCents: z.coerce.number().int().min(0).max(100_000_00),
@@ -24,17 +24,28 @@ const ProductInput = z.object({
   stock: z.coerce.number().int().min(0).max(100_000),
   isActive: z.coerce.boolean().default(true),
   weightGrams: z.coerce.number().int().min(0).max(1_000_000).optional(),
-  images: z.array(Image).max(8),
+  images: z.array(Image).max(8).default([]),
   categoryId: z.string().uuid().nullable().optional(),
-  defaultVariantSku: z.string().min(1).max(80),
+  // Optional: when empty we auto-derive from the slug so editing legacy
+  // products (or those whose variant row is missing in KV) doesn't fail.
+  defaultVariantSku: z.string().max(80).optional(),
 });
 
 function parseFromForm(fd: FormData) {
-  const images = JSON.parse(String(fd.get("images") ?? "[]"));
+  const rawImages = String(fd.get("images") ?? "[]");
+  let images: unknown = [];
+  try {
+    images = JSON.parse(rawImages);
+  } catch {
+    images = [];
+  }
   return ProductInput.parse({
     id: fd.get("id") || undefined,
-    slug: fd.get("slug"),
-    nameI18n: { en: fd.get("name_en"), it: fd.get("name_it") },
+    slug: String(fd.get("slug") ?? "").trim().toLowerCase(),
+    nameI18n: {
+      en: String(fd.get("name_en") ?? "").trim(),
+      it: String(fd.get("name_it") ?? "").trim(),
+    },
     descriptionI18n: {
       en: sanitizeHtml(String(fd.get("description_en") ?? "")),
       it: sanitizeHtml(String(fd.get("description_it") ?? "")),
@@ -46,14 +57,40 @@ function parseFromForm(fd: FormData) {
     weightGrams: fd.get("weightGrams") || undefined,
     images,
     categoryId: (fd.get("categoryId") as string) || null,
-    defaultVariantSku: fd.get("defaultVariantSku"),
+    defaultVariantSku:
+      String(fd.get("defaultVariantSku") ?? "").trim() || undefined,
   });
+}
+
+/**
+ * Server actions can't return validation errors as plain rejections without
+ * surfacing as 500s. Wrap parse + log the full issues array to Vercel logs,
+ * then re-throw a user-friendly Error that includes the failing field names
+ * so the admin sees something actionable in the dev console / error overlay.
+ */
+function validate(fd: FormData) {
+  try {
+    return parseFromForm(fd);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      const fieldList = e.issues
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; ");
+      console.error("[admin-products] validation failed:", e.issues);
+      throw new Error(`Validazione fallita — ${fieldList}`);
+    }
+    throw e;
+  }
 }
 
 export async function upsertProductAction(fd: FormData) {
   const session = await requireAdmin();
-  const data = parseFromForm(fd);
+  const data = validate(fd);
   const now = new Date();
+  // Fallback SKU if the form didn't supply one (e.g. editing a product whose
+  // variant row was never seeded into KV).
+  const sku =
+    data.defaultVariantSku || `RVR-${data.slug.toUpperCase().slice(0, 60)}`;
 
   if (data.id) {
     const before = await store.findOne<Product>(TABLES.products, (p) => p.id === data.id);
@@ -70,6 +107,28 @@ export async function upsertProductAction(fd: FormData) {
       categoryId: data.categoryId ?? null,
       updatedAt: now,
     });
+    // Make sure at least one variant exists, even if the products row pre-dates
+    // a variants seed. Update the existing variant's stock to mirror product.
+    const existingVariant = await store.findOne<ProductVariant>(
+      TABLES.variants,
+      (v) => v.productId === data.id,
+    );
+    if (existingVariant) {
+      await store.updateWhere<ProductVariant>(
+        TABLES.variants,
+        (v) => v.id === existingVariant.id,
+        { stock: data.stock, sku },
+      );
+    } else {
+      await store.insert<ProductVariant>(TABLES.variants, {
+        id: newId(),
+        productId: data.id,
+        sku,
+        attrs: {},
+        priceCents: null,
+        stock: data.stock,
+      });
+    }
     const after = await store.findOne<Product>(TABLES.products, (p) => p.id === data.id);
     await logAudit({
       actorId: session.user.id,
@@ -101,7 +160,7 @@ export async function upsertProductAction(fd: FormData) {
     await store.insert<ProductVariant>(TABLES.variants, {
       id: newId(),
       productId: created.id,
-      sku: data.defaultVariantSku,
+      sku,
       attrs: {},
       priceCents: null,
       stock: data.stock,

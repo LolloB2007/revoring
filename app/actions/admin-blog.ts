@@ -15,36 +15,61 @@ const I18nHtml = z.object({ en: z.string().min(1).max(60_000), it: z.string().mi
 
 const Input = z.object({
   id: z.string().uuid().optional(),
-  slug: z.string().regex(/^[a-z0-9-]+$/).min(2).max(120),
+  slug: z.string().regex(/^[a-z0-9-]+$/, "Slug deve contenere solo a-z, 0-9 e trattini").min(2).max(120),
   titleI18n: I18nShort,
   excerptI18n: I18nShort,
   bodyI18n: I18nHtml,
   coverUrl: z.string().url().optional().nullable(),
   coverAlt: z.string().max(300).optional().nullable(),
-  tags: z.array(z.string().max(40)).max(10),
+  tags: z.array(z.string().max(40)).max(10).default([]),
   publish: z.coerce.boolean().default(false),
 });
 
 function parse(fd: FormData) {
   return Input.parse({
     id: fd.get("id") || undefined,
-    slug: fd.get("slug"),
-    titleI18n: { en: fd.get("title_en"), it: fd.get("title_it") },
-    excerptI18n: { en: fd.get("excerpt_en"), it: fd.get("excerpt_it") },
+    slug: String(fd.get("slug") ?? "").trim().toLowerCase(),
+    titleI18n: {
+      en: String(fd.get("title_en") ?? "").trim(),
+      it: String(fd.get("title_it") ?? "").trim(),
+    },
+    excerptI18n: {
+      en: String(fd.get("excerpt_en") ?? "").trim(),
+      it: String(fd.get("excerpt_it") ?? "").trim(),
+    },
     bodyI18n: {
       en: sanitizeHtml(String(fd.get("body_en") ?? "")),
       it: sanitizeHtml(String(fd.get("body_it") ?? "")),
     },
-    coverUrl: fd.get("coverUrl") || null,
-    coverAlt: fd.get("coverAlt") || null,
+    coverUrl: String(fd.get("coverUrl") ?? "").trim() || null,
+    coverAlt: String(fd.get("coverAlt") ?? "").trim() || null,
     tags: String(fd.get("tags") ?? "").split(",").map((t) => t.trim()).filter(Boolean),
     publish: fd.get("publish") === "on",
   });
 }
 
+/**
+ * Same validation-error wrapper as admin-products: log issues + throw a
+ * readable message instead of a raw ZodError.
+ */
+function validate(fd: FormData) {
+  try {
+    return parse(fd);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      const fieldList = e.issues
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; ");
+      console.error("[admin-blog] validation failed:", e.issues);
+      throw new Error(`Validazione fallita — ${fieldList}`);
+    }
+    throw e;
+  }
+}
+
 export async function upsertPostAction(fd: FormData) {
   const session = await requireAdmin();
-  const data = parse(fd);
+  const data = validate(fd);
   const publishedAt = data.publish ? new Date() : null;
   const now = new Date();
 
