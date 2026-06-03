@@ -124,7 +124,12 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next|api/stripe/webhook|api/auth|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)",
-  ],
+  // Run on the public site + /admin only.
+  // Excluded entirely:
+  //   - /api/*    (API routes own their own auth + don't need locale routing;
+  //               next-intl would otherwise 307 them to /<locale>/api/... → 404)
+  //   - /_next/*  (Next internals)
+  //   - static files (anything with a dot in the path: favicon.ico, robots.txt,
+  //                  sitemap.xml, /brand/*.jpg, …)
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
 };
