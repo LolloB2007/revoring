@@ -88,19 +88,26 @@ export function BlogForm({ initial }: { initial?: Initial }) {
         </Row>
       </div>
 
-      <Row label="Cover image">
+      <Row label="Immagine di copertina">
         <div className="space-y-2">
           {coverUrl && <img src={coverUrl} alt="" className="max-h-48 rounded" />}
           <input
+            id="blog-cover-input"
             type="file"
             accept="image/*"
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) uploadCover(f);
             }}
-            className="text-sm"
+            className="sr-only"
           />
-          <Input name="coverAlt" defaultValue={v.coverAlt ?? ""} placeholder="Alt text (required for SEO)" />
+          <label
+            htmlFor="blog-cover-input"
+            className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md bg-neutral-900 px-3 text-xs font-medium text-white transition hover:bg-neutral-800"
+          >
+            Scegli file
+          </label>
+          <Input name="coverAlt" defaultValue={v.coverAlt ?? ""} placeholder="Testo alternativo (richiesto per SEO)" />
         </div>
       </Row>
 

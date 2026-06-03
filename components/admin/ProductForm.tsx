@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,8 +36,11 @@ const empty: Initial = {
 export function ProductForm({ initial }: { initial?: Initial }) {
   const v = initial ?? empty;
   const [images, setImages] = useState<Array<{ url: string; alt: string }>>(v.images ?? []);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function upload(file: File) {
+    setUploading(true);
     try {
       const { upload: blobUpload } = await import("@vercel/blob/client");
       const blob = await blobUpload(`products/${file.name}`, file, {
@@ -48,6 +51,9 @@ export function ProductForm({ initial }: { initial?: Initial }) {
       setImages((cur) => [...cur, { url: blob.url, alt: file.name }]);
     } catch (e) {
       alert("Upload fallito: " + ((e as Error).message ?? "errore sconosciuto"));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -126,14 +132,25 @@ export function ProductForm({ initial }: { initial?: Initial }) {
       <Row label="Immagini">
         <div className="space-y-3">
           <input
+            ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/avif"
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) upload(f);
             }}
-            className="text-sm"
+            className="sr-only"
+            id="product-image-input"
           />
+          <label
+            htmlFor="product-image-input"
+            aria-disabled={uploading}
+            className={`inline-flex h-8 cursor-pointer items-center gap-2 rounded-md bg-neutral-900 px-3 text-xs font-medium text-white transition hover:bg-neutral-800 ${
+              uploading ? "pointer-events-none opacity-60" : ""
+            }`}
+          >
+            {uploading ? "Caricamento…" : "Scegli file"}
+          </label>
           <div className="grid grid-cols-3 gap-2">
             {images.map((img, i) => (
               <div key={img.url} className="relative">
@@ -150,12 +167,6 @@ export function ProductForm({ initial }: { initial?: Initial }) {
             ))}
           </div>
           <input type="hidden" name="images" value={JSON.stringify(images)} />
-          {images.length === 0 && (
-            <p className="text-xs text-neutral-500">
-              Configura R2 in <code>.env.local</code> per abilitare l&apos;upload. Senza R2 puoi
-              comunque incollare URL nelle immagini esistenti modificandole direttamente.
-            </p>
-          )}
         </div>
       </Row>
 
