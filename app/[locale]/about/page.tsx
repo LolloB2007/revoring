@@ -1,6 +1,10 @@
-import Image from "next/image";
 import { setRequestLocale } from "next-intl/server";
 import { buildMetadata } from "@/lib/seo";
+import { AboutHero } from "@/components/site/AboutHero";
+import { AboutBlock } from "@/components/site/AboutBlock";
+import { AboutInterstitial } from "@/components/site/AboutInterstitial";
+import { MarqueeStrip } from "@/components/site/MarqueeStrip";
+import { AboutStats } from "@/components/site/AboutStats";
 import type { Locale } from "@/i18n";
 
 export const revalidate = 60;
@@ -74,6 +78,23 @@ const BLOCKS: Block[] = [
   },
 ];
 
+const MARQUEE_IT = [
+  "ONE INFINITE TRAINING",
+  "14 ANELLI",
+  "3 INTENSITÀ",
+  "MADE IN ITALY",
+  "300+ ESERCIZI",
+  "ACADEMY CERTIFICATA",
+];
+const MARQUEE_EN = [
+  "ONE INFINITE TRAINING",
+  "14 RINGS",
+  "3 INTENSITIES",
+  "MADE IN ITALY",
+  "300+ EXERCISES",
+  "CERTIFIED ACADEMY",
+];
+
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -81,95 +102,32 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
   return (
     <>
-      <section className="relative h-[60vh] min-h-[480px] overflow-hidden bg-neutral-950 text-white">
-        <Image
-          src="/brand/hero.jpg"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover opacity-60"
-          aria-hidden
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-black" aria-hidden />
-        <div className="relative container-x h-full flex flex-col justify-end pb-16">
-          <p className="text-xs tracking-[0.3em] text-neutral-300">
-            {isIt ? "CHI SIAMO" : "ABOUT"}
-          </p>
-          <h1 className="mt-4 text-5xl md:text-7xl font-semibold tracking-tight leading-[1.05] max-w-3xl">
-            {isIt ? "Un solo attrezzo. Allenamenti infiniti." : "One tool. Infinite workouts."}
-          </h1>
-        </div>
-      </section>
+      <AboutHero
+        eyebrow={isIt ? "CHI SIAMO" : "ABOUT"}
+        title={isIt ? "Un solo attrezzo. Allenamenti infiniti." : "One tool. Infinite workouts."}
+      />
 
       {BLOCKS.map((b, i) => (
-        <section
+        <AboutBlock
           key={b.eyebrowEn}
-          className={`${i % 2 === 0 ? "bg-white" : "bg-neutral-50"} border-t border-neutral-900/90`}
-        >
-          <div
-            className={`container-x py-20 md:py-28 grid gap-10 md:gap-16 items-center md:grid-cols-2 ${
-              i % 2 === 1 ? "md:[&>*:first-child]:order-2" : ""
-            }`}
-          >
-            <div className="space-y-6">
-              <div className="flex items-baseline gap-4">
-                <span className="text-5xl md:text-6xl font-semibold tracking-tight text-neutral-200 leading-none">
-                  {b.numero}
-                </span>
-                <span className="text-xs tracking-[0.3em] text-[color:var(--color-brand)]">
-                  {isIt ? b.eyebrowIt : b.eyebrowEn}
-                </span>
-              </div>
-              <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
-                {isIt ? b.titleIt : b.titleEn}
-              </h2>
-              <p className="text-lg leading-relaxed text-neutral-700 max-w-xl">
-                {isIt ? b.bodyIt : b.bodyEn}
-              </p>
-            </div>
-            <div className="relative aspect-[4/5] md:aspect-[5/6] overflow-hidden rounded-lg bg-neutral-100">
-              <Image
-                src={b.image}
-                alt={isIt ? b.imageAltIt : b.imageAltEn}
-                fill
-                sizes="(min-width: 768px) 50vw, 100vw"
-                className="object-cover transition-transform duration-700 hover:scale-[1.03]"
-              />
-            </div>
-          </div>
-        </section>
+          numero={b.numero}
+          eyebrow={isIt ? b.eyebrowIt : b.eyebrowEn}
+          title={isIt ? b.titleIt : b.titleEn}
+          body={isIt ? b.bodyIt : b.bodyEn}
+          image={b.image}
+          imageAlt={isIt ? b.imageAltIt : b.imageAltEn}
+          reverse={i % 2 === 1}
+          bg={i % 2 === 0 ? "white" : "neutral"}
+        />
       ))}
 
-      {/* Full-bleed dark divider strip — heavy visual break between the
-          editorial blocks and the stats / company info sections. */}
-      <section className="relative h-64 md:h-80 overflow-hidden bg-neutral-950">
-        <Image
-          src="/brand/lifestyle-2.jpg"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover opacity-50"
-          aria-hidden
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/60 to-transparent" aria-hidden />
-        <div className="relative container-x h-full flex items-center">
-          <p className="text-2xl md:text-4xl font-semibold tracking-tight text-white max-w-xl leading-tight">
-            {isIt
-              ? "Allenati ovunque. Ottieni risultati come in palestra."
-              : "Train anywhere. Get gym-grade results."}
-          </p>
-        </div>
-      </section>
+      <MarqueeStrip items={isIt ? MARQUEE_IT : MARQUEE_EN} />
 
-      <section className="border-y border-neutral-900/90 bg-white">
-        <div className="container-x py-20 grid grid-cols-2 md:grid-cols-4 gap-8">
-          <Stat n="300+" labelIt="Esercizi" labelEn="Exercises" isIt={isIt} />
-          <Stat n="14" labelIt="Anelli elastici" labelEn="Elastic rings" isIt={isIt} />
-          <Stat n="3" labelIt="Livelli di resistenza" labelEn="Resistance levels" isIt={isIt} />
-          <Stat n="30+" labelIt="Paesi" labelEn="Countries" isIt={isIt} />
-        </div>
-      </section>
+      <AboutInterstitial
+        text={isIt ? "Allenati ovunque. Ottieni risultati come in palestra." : "Train anywhere. Get gym-grade results."}
+      />
+
+      <AboutStats isIt={isIt} />
 
       <section className="bg-neutral-950 text-white">
         <div className="container-x py-24 md:py-32 max-w-3xl">
@@ -195,27 +153,6 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </div>
       </section>
     </>
-  );
-}
-
-function Stat({
-  n,
-  labelIt,
-  labelEn,
-  isIt,
-}: {
-  n: string;
-  labelIt: string;
-  labelEn: string;
-  isIt: boolean;
-}) {
-  return (
-    <div>
-      <p className="text-5xl md:text-6xl font-semibold tracking-tight">{n}</p>
-      <p className="mt-2 text-sm text-neutral-500 uppercase tracking-wider">
-        {isIt ? labelIt : labelEn}
-      </p>
-    </div>
   );
 }
 
