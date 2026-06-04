@@ -17,16 +17,21 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 }
 
 interface Block {
+  numero: string;
   eyebrowIt: string;
   eyebrowEn: string;
   titleIt: string;
   titleEn: string;
   bodyIt: string;
   bodyEn: string;
+  image: string;
+  imageAltIt: string;
+  imageAltEn: string;
 }
 
 const BLOCKS: Block[] = [
   {
+    numero: "01",
     eyebrowIt: "IL PRODOTTO",
     eyebrowEn: "THE PRODUCT",
     titleIt: "Una catena di 14 anelli elastici. Infinite impugnature.",
@@ -35,8 +40,12 @@ const BLOCKS: Block[] = [
       "Revoring® è il primo attrezzo di fitness all-in-one: una catena di 14 anelli elastici con molteplici impugnature. Permette di regolare l'intensità di ogni esercizio e di trovare punti di ancoraggio diversi — a casa, in palestra, all'aperto.",
     bodyEn:
       "Revoring® is the first all-in-one fitness tool: a 14-ring elastic chain with multiple grips. Adjust the intensity of every exercise and find different anchoring points — at home, in the gym, outdoors.",
+    image: "/brand/product-medium.jpg",
+    imageAltIt: "Catena di 14 anelli elastici Revoring",
+    imageAltEn: "Revoring 14-ring elastic chain",
   },
   {
+    numero: "02",
     eyebrowIt: "LA METODOLOGIA",
     eyebrowEn: "THE METHOD",
     titleIt: "Il sistema più versatile per l'allenamento funzionale.",
@@ -45,8 +54,12 @@ const BLOCKS: Block[] = [
       "Suspension, circuit, personal training, gruppi, stretching, pilates, allenamento posturale, riabilitazione, fisioterapia, preparazione atletica. Allenati su forza esplosiva, coordinazione, postura, salute cardiovascolare — adatto a ogni livello e a ogni età.",
     bodyEn:
       "Suspension, circuit, personal training, group classes, stretching, pilates, postural training, rehabilitation, physical therapy, athletic prep. Train explosive strength, coordination, posture, cardiovascular health — for every level, every age.",
+    image: "/brand/lifestyle-1.jpg",
+    imageAltIt: "Sessione di allenamento Revoring",
+    imageAltEn: "Revoring training session",
   },
   {
+    numero: "03",
     eyebrowIt: "L'ACADEMY",
     eyebrowEn: "THE ACADEMY",
     titleIt: "Revoring Academy — formazione continua.",
@@ -55,6 +68,9 @@ const BLOCKS: Block[] = [
       "L'Academy sviluppa costantemente soluzioni di allenamento in più discipline del benessere: functional training, fisioterapia, pilates miofasciale, arti marziali. Metodologia scientifica, team di esperti, direzione tecnica certificata.",
     bodyEn:
       "The Academy continuously develops training solutions across multiple wellness disciplines: functional training, physical therapy, myofascial pilates, martial arts. Scientific methodology, expert team, certified technical direction.",
+    image: "/brand/academy.jpg",
+    imageAltIt: "Corso Revoring Academy",
+    imageAltEn: "Revoring Academy course",
   },
 ];
 
@@ -87,38 +103,66 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       </section>
 
       {BLOCKS.map((b, i) => (
-        <section key={b.eyebrowEn} className={i % 2 === 0 ? "bg-white" : "bg-neutral-50"}>
-          <div className="container-x py-24 md:py-32 grid gap-12 md:grid-cols-[1fr_2fr] items-start">
-            <div>
-              <p className="text-xs tracking-[0.3em] text-[color:var(--color-brand)]">
-                {isIt ? b.eyebrowIt : b.eyebrowEn}
-              </p>
-              <h2 className="mt-4 text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
+        <section
+          key={b.eyebrowEn}
+          className={`${i % 2 === 0 ? "bg-white" : "bg-neutral-50"} border-t border-neutral-900/90`}
+        >
+          <div
+            className={`container-x py-20 md:py-28 grid gap-10 md:gap-16 items-center md:grid-cols-2 ${
+              i % 2 === 1 ? "md:[&>*:first-child]:order-2" : ""
+            }`}
+          >
+            <div className="space-y-6">
+              <div className="flex items-baseline gap-4">
+                <span className="text-5xl md:text-6xl font-semibold tracking-tight text-neutral-200 leading-none">
+                  {b.numero}
+                </span>
+                <span className="text-xs tracking-[0.3em] text-[color:var(--color-brand)]">
+                  {isIt ? b.eyebrowIt : b.eyebrowEn}
+                </span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
                 {isIt ? b.titleIt : b.titleEn}
               </h2>
+              <p className="text-lg leading-relaxed text-neutral-700 max-w-xl">
+                {isIt ? b.bodyIt : b.bodyEn}
+              </p>
             </div>
-            <p className="text-lg leading-relaxed text-neutral-700">
-              {isIt ? b.bodyIt : b.bodyEn}
-            </p>
+            <div className="relative aspect-[4/5] md:aspect-[5/6] overflow-hidden rounded-lg bg-neutral-100">
+              <Image
+                src={b.image}
+                alt={isIt ? b.imageAltIt : b.imageAltEn}
+                fill
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="object-cover transition-transform duration-700 hover:scale-[1.03]"
+              />
+            </div>
           </div>
         </section>
       ))}
 
-      <section className="bg-neutral-100">
-        <div className="container-x py-16">
-          <div className="aspect-[16/9] relative rounded-lg overflow-hidden">
-            <Image
-              src="/brand/about.png"
-              alt={isIt ? "Sessione di allenamento Revoring" : "Revoring training session"}
-              fill
-              sizes="(min-width: 1024px) 80rem, 100vw"
-              className="object-cover"
-            />
-          </div>
+      {/* Full-bleed dark divider strip — heavy visual break between the
+          editorial blocks and the stats / company info sections. */}
+      <section className="relative h-64 md:h-80 overflow-hidden bg-neutral-950">
+        <Image
+          src="/brand/lifestyle-2.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover opacity-50"
+          aria-hidden
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/60 to-transparent" aria-hidden />
+        <div className="relative container-x h-full flex items-center">
+          <p className="text-2xl md:text-4xl font-semibold tracking-tight text-white max-w-xl leading-tight">
+            {isIt
+              ? "Allenati ovunque. Ottieni risultati come in palestra."
+              : "Train anywhere. Get gym-grade results."}
+          </p>
         </div>
       </section>
 
-      <section className="border-y border-neutral-200 bg-white">
+      <section className="border-y border-neutral-900/90 bg-white">
         <div className="container-x py-20 grid grid-cols-2 md:grid-cols-4 gap-8">
           <Stat n="300+" labelIt="Esercizi" labelEn="Exercises" isIt={isIt} />
           <Stat n="14" labelIt="Anelli elastici" labelEn="Elastic rings" isIt={isIt} />
